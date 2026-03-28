@@ -1,67 +1,73 @@
 // functions/api/detect.js
-// 部署后访问路径：/api/detect
+// Cloudflare Pages Functions
 
-// 处理 OPTIONS 预检请求
-export async function onRequestOptions() {
-  return new Response('', {
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type'
-    }
-  });
-}
+export default async function onRequest(context) {
+  const { request, env } = context;
 
-// 处理 POST 请求
-export async function onRequestPost(context) {
-  const { request } = context;
+  // 只允许 POST 请求
+  if (request.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
+  }
 
   try {
+    // 1. 获取上传的图片 Base64
     const { image } = await request.json();
     if (!image) {
-      return new Response(JSON.stringify({ error: '请上传图片' }), { status: 400 });
+      return new Response(JSON.stringify({ error: '缺少图片数据' }), { status: 400 });
     }
 
-    // 1. 获取百度 access_token
+    // 去除 Base64 前缀（如果有）
+    let base64Data = image;
+    if (base64Data.includes(',')) {
+      base64Data = base64Data.split(',')[1];
+    }
+
+    // 2. 从环境变量获取百度密钥
+    const BAIDU_API_KEY = env.BAIDU_API_KEY;
+    const BAIDU_SECRET_KEY = env.BAIDU_SECRET_KEY;
+    if (!BAIDU_API_KEY || !BAIDU_SECRET_KEY) {
+      return new Response(JSON.stringify({ error: '服务端配置错误' }), { status: 500 });
+    }
+
+    // 3. 获取百度 access_token
     const tokenRes = await fetch(
-      `https://aip.baidubce.com/oauth/2.0/token?grant_type=client_credentials&client_id=${process.env.BAIDU_API_KEY}&client_secret=${process.env.BAIDU_SECRET_KEY}`,
+      `https://aip.baidubce.com/oauth/2.0/token?grant_type=client_credentials&client_id=${BAIDU_API_KEY}&client_secret=${BAIDU_SECRET_KEY}`,
       { method: 'POST' }
     );
     const tokenData = await tokenRes.json();
-    
-    if (!tokenData.access_token) {
-      return new Response(JSON.stringify({ error: '获取访问令牌失败' }), { status: 500 });
-    }
-    
     const accessToken = tokenData.access_token;
+    if (!accessToken) {
+      return new Response(JSON.stringify({ error: '获取百度授权失败' }), { status: 500 });
+    }
 
-    // 2. 调用百度人脸检测
+    // 4. 调用百度人脸检测接口
     const baiduRes = await fetch(
       `https://aip.baidubce.com/rest/2.0/face/v3/detect?access_token=${accessToken}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          image: image,
+          image: base64Data,
           image_type: 'BASE64',
-          face_field: 'beauty,age,gender,face_shape,expression,emotion'
+          face_field: 'age,beauty,gender,face_shape,expression,emotion'
         })
       }
     );
 
     const result = await baiduRes.json();
-    
+    // 百度返回错误时 result 中包含 error_code
     if (result.error_code) {
-      return new Response(JSON.stringify({ error: result.error_msg || '人脸检测失败' }), { status: 400 });
+      return new Response(JSON.stringify({ error: `百度API错误: ${result.error_msg}` }), { status: 400 });
     }
 
-    if (!result.result || !result.result.face_list || result.result.face_list.length === 0) {
-      return new Response(JSON.stringify({ error: '未检测到人脸' }), { status: 404 });
+    const faceList = result.result?.face_list;
+    if (!faceList || faceList.length === 0) {
+      return new Response(JSON.stringify({ error: '未检测到人脸，请确保照片清晰，正面' }), { status: 404 });
     }
 
-    const face = result.result.face_list[0];
+    const face = faceList[0];
 
-    // 3. 生成医美建议
+    // 5. 生成医美建议
     const advice = generateAdvice(face.face_shape?.type, face.gender?.type, face.age, face.beauty);
 
     const responseData = {
@@ -79,8 +85,8 @@ export async function onRequestPost(context) {
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
     });
   } catch (err) {
-    console.error('Error:', err.message);
-    return new Response(JSON.stringify({ error: err.message || '服务器错误' }), { status: 500 });
+    console.error('分析失败:', err);
+    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
   }
 }
 
