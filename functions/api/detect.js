@@ -97,7 +97,8 @@ export async function onRequestPost(context) {
 
     // 计算面部比例
     let faceAnalysis = {};
-    if (face.landmark150 && face.landmark150.length > 0) {
+    const landmarkKeys = face.landmark150 ? Object.keys(face.landmark150) : [];
+    if (landmarkKeys.length > 0) {
       faceAnalysis = calculateFaceProportions(face.landmark150, face.face_shape?.type);
     }
 
@@ -114,7 +115,7 @@ export async function onRequestPost(context) {
       glasses: face.glasses?.type,
       face_analysis: faceAnalysis,
       // landmark 数量调试
-      landmark_count: face.landmark150 ? face.landmark150.length : 0
+      landmark_count: landmarkKeys.length
     };
 
     return new Response(JSON.stringify(responseData), {
