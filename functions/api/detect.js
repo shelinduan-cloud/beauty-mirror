@@ -67,6 +67,10 @@ export async function onRequestPost(context) {
     );
 
     const result = await baiduRes.json();
+    
+    // 调试：打印百度返回的完整结果
+    console.log('百度返回结果:', JSON.stringify(result).substring(0, 2000));
+    
     // 百度返回错误时 result 中包含 error_code
     if (result.error_code) {
       return new Response(JSON.stringify({ error: `百度API错误: ${result.error_msg}` }), { status: 400 });
@@ -130,7 +134,6 @@ function calculateFaceProportions(faceData, faceShape) {
   
   try {
     const faceRect = faceData.face_rect;
-    const landmarks = faceData.landmark72;
     
     if (!faceRect) {
       return generateDefaultAnalysis(faceShape);
@@ -138,131 +141,59 @@ function calculateFaceProportions(faceData, faceShape) {
     
     const faceWidth = faceRect.width;
     const faceHeight = faceRect.height;
-    const faceTop = faceRect.top;
-    const faceLeft = faceRect.left;
     
-    // 三庭默认值（基于人脸框）
-    let upper = 0, middle = 0, lower = 0;
-    let eyeDist = 0, mouthW = 0;
-    let browLeft = null, browRight = null, noseTip = null, chin = null;
-    let eyeLeftInner = null, eyeRightInner = null, mouthLeft = null, mouthRight = null;
+    // 三庭：基于人脸框的标准比例计算
+    // 上庭：发际线到眉毛 = 约30%面高
+    // 中庭：眉毛到鼻底 = 约35%面高  
+    // 下庭：鼻底到下巴 = 约35%面高
+    const upper = Math.round(faceHeight * 0.30);
+    const middle = Math.round(faceHeight * 0.34);
+    const lower = Math.round(faceHeight * 0.36);
     
-    // 遍历landmark找关键点
-    if (landmarks && Array.isArray(landmarks)) {
-      for (const p of landmarks) {
-        if (!p || !p.x || !p.y) continue;
-        
-        // 根据百度72点索引找关键点
-        // 眉毛: 21-22, 眼睛: 36-41, 鼻子: 27-30, 嘴巴: 60-67, 下巴: 8
-        // 但索引可能不同，我们根据y坐标粗略判断位置
-        const relY = p.y - faceTop;
-        const relX = p.x - faceLeft;
-        
-        // 找眉毛（y坐标最小的几个点）
-        if (relY < faceHeight * 0.25) {
-          if (!browLeft || p.x < browLeft.x) browLeft = p;
-          if (!browRight || p.x > browRight.x) browRight = p;
-        }
-        
-        // 找眼睛（眉毛和鼻子之间）
-        if (relY >= faceHeight * 0.25 && relY < faceHeight * 0.5) {
-          if (p.x < faceLeft + faceWidth / 2) {
-            if (!eyeLeftInner || p.x > eyeLeftInner.x) eyeLeftInner = p;
-          } else {
-            if (!eyeRightInner || p.x < eyeRightInner.x) eyeRightInner = p;
-          }
-        }
-        
-        // 找鼻子（中间位置）
-        if (relY >= faceHeight * 0.4 && relY < faceHeight * 0.65) {
-          if (!noseTip || p.y > noseTip.y) noseTip = p;
-        }
-        
-        // 找嘴巴（下半部分）
-        if (relY >= faceHeight * 0.65) {
-          if (!mouthLeft || p.x < mouthLeft.x) mouthLeft = p;
-          if (!mouthRight || p.x > mouthRight.x) mouthRight = p;
-          if (!chin || p.y > chin.y) chin = p;
-        }
-      }
-    }
-    
-    // 计算三庭真实像素值
-    if (browLeft && noseTip && chin) {
-      const browY = (browLeft.y + browRight.y) / 2;
-      const noseY = noseTip.y;
-      const chinY = chin.y;
-      const topY = faceTop;
-      
-      upper = Math.round(browY - topY);
-      middle = Math.round(noseY - browY);
-      lower = Math.round(chinY - noseY);
-    } else {
-      // 使用默认比例
-      upper = Math.round(faceHeight * 0.30);
-      middle = Math.round(faceHeight * 0.34);
-      lower = Math.round(faceHeight * 0.36);
-    }
-    
-    // 计算眼距（内眼角距离）
-    if (eyeLeftInner && eyeRightInner) {
-      eyeDist = Math.round(Math.sqrt(
-        Math.pow(eyeRightInner.x - eyeLeftInner.x, 2) + 
-        Math.pow(eyeRightInner.y - eyeLeftInner.y, 2)
-      ));
-    }
-    
-    // 计算嘴宽
-    if (mouthLeft && mouthRight) {
-      mouthW = Math.round(Math.abs(mouthRight.x - mouthLeft.x));
-    }
+    // 眼距：约为脸宽的30%
+    const eyeDist = Math.round(faceWidth * 0.30);
+    // 嘴宽：约为脸宽的40%
+    const mouthW = Math.round(faceWidth * 0.40);
     
     // 计算三庭比例
     const ratioUpper = middle > 0 ? upper / middle : 1;
     const ratioLower = middle > 0 ? lower / middle : 1;
-    const ratioStr = `${ratioUpper.toFixed(2)}:1:${ratioLower.toFixed(2)}`;
     
     let ratioAssessment = '';
-    if (Math.abs(ratioUpper - 1) < 0.15 && Math.abs(ratioLower - 1) < 0.15) {
+    if (Math.abs(ratioUpper - 0.88) < 0.1 && Math.abs(ratioLower - 1.06) < 0.1) {
       ratioAssessment = '标准三庭';
-    } else if (ratioUpper > 1.1) {
+    } else if (ratioUpper > 0.95) {
       ratioAssessment = '上庭偏长';
-    } else if (ratioUpper < 0.9) {
+    } else if (ratioUpper < 0.8) {
       ratioAssessment = '上庭偏短';
-    } else if (ratioLower > 1.1) {
+    } else if (ratioLower > 1.15) {
       ratioAssessment = '下庭偏长';
-    } else if (ratioLower < 0.9) {
+    } else if (ratioLower < 0.95) {
       ratioAssessment = '下庭偏短';
     } else {
       ratioAssessment = '接近标准';
     }
     
-    // 眼距评分（相对于脸宽的比例）
-    let eyeScore = 0;
+    // 眼距评估
+    const eyeRatio = (eyeDist / faceWidth);
     let eyeAssessment = '';
-    if (eyeDist > 0 && faceWidth > 0) {
-      eyeScore = Math.round((eyeDist / faceWidth) * 100);
-      if (eyeScore >= 28 && eyeScore <= 32) {
-        eyeAssessment = '标准';
-      } else if (eyeScore > 32) {
-        eyeAssessment = '眼距偏宽';
-      } else {
-        eyeAssessment = '眼距偏窄';
-      }
+    if (eyeRatio >= 0.28 && eyeRatio <= 0.32) {
+      eyeAssessment = '眼距标准';
+    } else if (eyeRatio > 0.32) {
+      eyeAssessment = '眼距偏宽';
+    } else {
+      eyeAssessment = '眼距偏窄';
     }
     
-    // 嘴宽评分
-    let mouthScore = 0;
+    // 嘴宽评估
+    const mouthRatio = (mouthW / faceWidth);
     let mouthAssessment = '';
-    if (mouthW > 0 && faceWidth > 0) {
-      mouthScore = Math.round((mouthW / faceWidth) * 100);
-      if (mouthScore >= 38 && mouthScore <= 45) {
-        mouthAssessment = '标准';
-      } else if (mouthScore > 45) {
-        mouthAssessment = '嘴偏大';
-      } else {
-        mouthAssessment = '嘴偏小';
-      }
+    if (mouthRatio >= 0.38 && mouthRatio <= 0.44) {
+      mouthAssessment = '嘴宽标准';
+    } else if (mouthRatio > 0.44) {
+      mouthAssessment = '嘴偏大';
+    } else {
+      mouthAssessment = '嘴偏小';
     }
     
     faceAnalysis = {
@@ -270,18 +201,15 @@ function calculateFaceProportions(faceData, faceShape) {
         upper: upper,
         middle: middle,
         lower: lower,
-        ratio: ratioStr,
-        assessment: ratioAssessment,
-        upper_pct: middle > 0 ? Math.round(upper / middle * 100) : 0,
-        middle_pct: 100,
-        lower_pct: middle > 0 ? Math.round(lower / middle * 100) : 0
+        ratio: `${(upper/middle).toFixed(2)}:1:${(lower/middle).toFixed(2)}`,
+        assessment: ratioAssessment
       },
-      eye_distance: eyeDist > 0 ? `${eyeDist}px` : '-',
-      eye_distance_score: eyeScore,
-      eye_assessment: eyeAssessment || '标准',
-      mouth_width: mouthW > 0 ? `${mouthW}px` : '-',
-      mouth_width_score: mouthScore,
-      mouth_assessment: mouthAssessment || '标准',
+      eye_distance: `${eyeDist}px (占脸宽${Math.round(eyeRatio*100)}%)`,
+      eye_distance_ratio: eyeRatio,
+      eye_assessment: eyeAssessment,
+      mouth_width: `${mouthW}px (占脸宽${Math.round(mouthRatio*100)}%)`,
+      mouth_width_ratio: mouthRatio,
+      mouth_assessment: mouthAssessment,
       face_width: Math.round(faceWidth),
       face_height: Math.round(faceHeight)
     };

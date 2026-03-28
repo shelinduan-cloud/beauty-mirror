@@ -724,7 +724,7 @@
       document.getElementById('faceShapeValue').textContent = faceShapeMap[data.face_shape] || '-';
       document.getElementById('faceShapeDesc').textContent = faceShapeDescMap[data.face_shape] || '-';
       
-      // 三庭比例 - 显示真实数值
+      // 三庭比例 - 显示像素值
       const faceAnalysis = data.face_analysis || {};
       const threeQ = faceAnalysis.three_quotients || {};
       const upper = threeQ.upper || 0;
@@ -733,13 +733,12 @@
       document.getElementById('threeQuotientsValue').textContent = `${upper}:${middle}:${lower}`;
       document.getElementById('threeQuotientsDesc').textContent = threeQ.assessment || '-';
       
-      // 眼距 - 显示像素值和百分比
+      // 眼距 - 显示像素值和占比
       const eyeDist = faceAnalysis.eye_distance || '-';
-      const eyeScore = faceAnalysis.eye_distance_score || 0;
       document.getElementById('eyeDistanceValue').textContent = eyeDist;
       document.getElementById('eyeDistanceDesc').textContent = faceAnalysis.eye_assessment || '-';
       
-      // 嘴宽 - 显示像素值和百分比
+      // 嘴宽 - 显示像素值和占比
       const mouthW = faceAnalysis.mouth_width || '-';
       document.getElementById('mouthWidthValue').textContent = mouthW;
       document.getElementById('mouthWidthDesc').textContent = faceAnalysis.mouth_assessment || '-';
