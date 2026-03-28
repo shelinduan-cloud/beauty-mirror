@@ -704,16 +704,10 @@
       
       // 基本信息
       document.getElementById('ageValue').textContent = data.age ? Math.round(data.age) + '岁' : '-';
-      document.getElementById('genderValue').textContent = data.gender === 'male' ? '男生' : '女生';
+      document.getElementById('genderValue').textContent = data.gender_cn || (data.gender === 'male' ? '男生' : '女生');
       
       // 脸型分析
-      const faceShapeMap = {
-        'square': '国字脸',
-        'triangle': '三角脸',
-        'oval': '鹅蛋脸',
-        'heart': '心形脸',
-        'round': '圆脸'
-      };
+      document.getElementById('faceShapeValue').textContent = data.face_shape_cn || '-';
       const faceShapeDescMap = {
         'square': '轮廓分明',
         'triangle': '上窄下宽',
@@ -721,27 +715,19 @@
         'heart': '精致立体',
         'round': '圆润可爱'
       };
-      document.getElementById('faceShapeValue').textContent = faceShapeMap[data.face_shape] || '-';
       document.getElementById('faceShapeDesc').textContent = faceShapeDescMap[data.face_shape] || '-';
       
-      // 三庭比例 - 显示像素值
-      const faceAnalysis = data.face_analysis || {};
-      const threeQ = faceAnalysis.three_quotients || {};
-      const upper = threeQ.upper || 0;
-      const middle = threeQ.middle || 0;
-      const lower = threeQ.lower || 0;
-      document.getElementById('threeQuotientsValue').textContent = `${upper}:${middle}:${lower}`;
-      document.getElementById('threeQuotientsDesc').textContent = threeQ.assessment || '-';
+      // 三庭比例 - 暂时显示"待完善"
+      document.getElementById('threeQuotientsValue').textContent = '-';
+      document.getElementById('threeQuotientsDesc').textContent = '待完善';
       
-      // 眼距 - 显示像素值和占比
-      const eyeDist = faceAnalysis.eye_distance || '-';
-      document.getElementById('eyeDistanceValue').textContent = eyeDist;
-      document.getElementById('eyeDistanceDesc').textContent = faceAnalysis.eye_assessment || '-';
+      // 眼距 - 暂时显示"待完善"
+      document.getElementById('eyeDistanceValue').textContent = '-';
+      document.getElementById('eyeDistanceDesc').textContent = '待完善';
       
-      // 嘴宽 - 显示像素值和占比
-      const mouthW = faceAnalysis.mouth_width || '-';
-      document.getElementById('mouthWidthValue').textContent = mouthW;
-      document.getElementById('mouthWidthDesc').textContent = faceAnalysis.mouth_assessment || '-';
+      // 嘴宽 - 暂时显示"待完善"
+      document.getElementById('mouthWidthValue').textContent = '-';
+      document.getElementById('mouthWidthDesc').textContent = '待完善';
       
       // 表情
       const expressionMap = {
@@ -774,21 +760,8 @@
       };
       document.getElementById('emotionDesc').textContent = emotionDescMap[data.emotion] || '-';
       
-      // 显示医美建议
-      if (data.advice) {
-        document.getElementById('adviceCard').style.display = 'block';
-        document.getElementById('adviceSummary').textContent = data.advice.summary;
-        
-        const listHtml = data.advice.suggestions.map(item => `
-          <div class="advice-item">
-            <span class="advice-item-title">${item.title}</span>
-            <span class="advice-item-content">${item.content}</span>
-          </div>
-        `).join('');
-        document.getElementById('adviceList').innerHTML = listHtml;
-      } else {
-        document.getElementById('adviceCard').style.display = 'none';
-      }
+      // 隐藏医美建议卡片（暂时没有数据）
+      document.getElementById('adviceCard').style.display = 'none';
     }
 
     function animateValue(id, start, end, duration) {
