@@ -143,6 +143,9 @@ function calculateFaceProportions(landmark150, faceShape) {
   }
 
   try {
+    // 调试：打印所有键名
+    console.log('All landmark150 keys:', Object.keys(landmark150));
+
     // 辅助函数：安全获取点坐标
     const getPoint = (name) => {
       const p = landmark150[name];
