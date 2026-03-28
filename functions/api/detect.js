@@ -1,7 +1,19 @@
 // functions/api/detect.js
 // Cloudflare Pages Functions
 
-export default async function onRequest(context) {
+// 处理 OPTIONS 预检请求
+export async function onRequestOptions() {
+  return new Response('', {
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type'
+    }
+  });
+}
+
+// 处理 POST 请求
+export async function onRequestPost(context) {
   const { request, env } = context;
 
   // 只允许 POST 请求
