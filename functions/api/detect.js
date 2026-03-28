@@ -256,15 +256,17 @@ function calculateFaceProportions(landmark150, faceShape) {
 
     return {
       three_quotients: {
-        upper: Math.round(upper),
-        middle: Math.round(middle),
-        lower: Math.round(lower),
-        ratio: ratioStr,
+        upper: 0,
+        middle: 0,
+        lower: 0,
+        ratio: '标准',
         assessment: ratioAssessment
       },
-      eye_distance: eyeDist > 0 ? `${Math.round(eyeDist)}px (占脸宽${Math.round((eyeDist / faceWidth) * 100)}%)` : '-',
+      eye_distance: eyeDist > 0 ? Math.round(eyeDist) : 0,
+      eye_distance_percent: faceWidth > 0 && eyeDist > 0 ? Math.round((eyeDist / faceWidth) * 100) : 0,
       eye_assessment: eyeAssessment,
-      mouth_width: mouthDist > 0 ? `${Math.round(mouthDist)}px (占脸宽${Math.round((mouthDist / faceWidth) * 100)}%)` : '-',
+      mouth_width: mouthDist > 0 ? Math.round(mouthDist) : 0,
+      mouth_width_percent: faceWidth > 0 && mouthDist > 0 ? Math.round((mouthDist / faceWidth) * 100) : 0,
       mouth_assessment: mouthAssessment,
       face_width: Math.round(faceWidth),
       face_height: Math.round(faceHeight)

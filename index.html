@@ -720,18 +720,19 @@
       // 三庭比例
       const faceAnalysis = data.face_analysis || {};
       const threeQ = faceAnalysis.three_quotients || {};
-      const upper = threeQ.upper || 0;
-      const middle = threeQ.middle || 0;
-      const lower = threeQ.lower || 0;
-      document.getElementById('threeQuotientsValue').textContent = `${upper}:${middle}:${lower}`;
+      document.getElementById('threeQuotientsValue').textContent = threeQ.ratio || '标准';
       document.getElementById('threeQuotientsDesc').textContent = threeQ.assessment || '-';
       
       // 眼距
-      document.getElementById('eyeDistanceValue').textContent = faceAnalysis.eye_distance || '-';
+      const eyeDist = faceAnalysis.eye_distance || 0;
+      const eyePct = faceAnalysis.eye_distance_percent || 0;
+      document.getElementById('eyeDistanceValue').textContent = eyeDist > 0 ? `${eyeDist}px (${eyePct}%)` : '-';
       document.getElementById('eyeDistanceDesc').textContent = faceAnalysis.eye_assessment || '-';
       
       // 嘴宽
-      document.getElementById('mouthWidthValue').textContent = faceAnalysis.mouth_width || '-';
+      const mouthW = faceAnalysis.mouth_width || 0;
+      const mouthPct = faceAnalysis.mouth_width_percent || 0;
+      document.getElementById('mouthWidthValue').textContent = mouthW > 0 ? `${mouthW}px (${mouthPct}%)` : '-';
       document.getElementById('mouthWidthDesc').textContent = faceAnalysis.mouth_assessment || '-';
       
       // 表情
