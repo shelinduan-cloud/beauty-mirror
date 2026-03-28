@@ -717,23 +717,19 @@
       };
       document.getElementById('faceShapeDesc').textContent = faceShapeDescMap[data.face_shape] || '-';
       
-      // 三庭比例
+      // 三庭比例 - 只显示定性评估
       const faceAnalysis = data.face_analysis || {};
       const threeQ = faceAnalysis.three_quotients || {};
-      document.getElementById('threeQuotientsValue').textContent = threeQ.ratio || '标准';
-      document.getElementById('threeQuotientsDesc').textContent = threeQ.assessment || '-';
+      document.getElementById('threeQuotientsValue').textContent = threeQ.assessment || '标准';
+      document.getElementById('threeQuotientsDesc').textContent = '';
       
-      // 眼距
-      const eyeDist = faceAnalysis.eye_distance || 0;
-      const eyePct = faceAnalysis.eye_distance_percent || 0;
-      document.getElementById('eyeDistanceValue').textContent = eyeDist > 0 ? `${eyeDist}px (${eyePct}%)` : '-';
-      document.getElementById('eyeDistanceDesc').textContent = faceAnalysis.eye_assessment || '-';
+      // 眼距 - 只显示定性评估
+      document.getElementById('eyeDistanceValue').textContent = faceAnalysis.eye_assessment || '标准';
+      document.getElementById('eyeDistanceDesc').textContent = '';
       
-      // 嘴宽
-      const mouthW = faceAnalysis.mouth_width || 0;
-      const mouthPct = faceAnalysis.mouth_width_percent || 0;
-      document.getElementById('mouthWidthValue').textContent = mouthW > 0 ? `${mouthW}px (${mouthPct}%)` : '-';
-      document.getElementById('mouthWidthDesc').textContent = faceAnalysis.mouth_assessment || '-';
+      // 嘴宽 - 只显示定性评估
+      document.getElementById('mouthWidthValue').textContent = faceAnalysis.mouth_assessment || '标准';
+      document.getElementById('mouthWidthDesc').textContent = '';
       
       // 表情
       const expressionMap = {
@@ -766,8 +762,77 @@
       };
       document.getElementById('emotionDesc').textContent = emotionDescMap[data.emotion] || '-';
       
-      // 隐藏医美建议卡片（暂时没有数据）
-      document.getElementById('adviceCard').style.display = 'none';
+      // 生成医美建议
+      const adviceText = generateMedicalAdvice(data);
+      document.getElementById('adviceSummary').textContent = adviceText;
+      document.getElementById('adviceList').innerHTML = '';
+      document.getElementById('adviceCard').style.display = 'block';
+    }
+    
+    // 生成医美建议
+    function generateMedicalAdvice(data) {
+      const faceShape = data.face_shape_cn || '';
+      const threeAssessment = data.face_analysis?.three_quotients?.assessment || '标准';
+      const eyeAssess = data.face_analysis?.eye_assessment || '标准';
+      const mouthAssess = data.face_analysis?.mouth_assessment || '标准';
+      const age = data.age || 0;
+      const gender = data.gender_cn || '';
+      const score = data.beauty || 0;
+      
+      let advice = '';
+      
+      // 脸型建议
+      if (faceShape === '鹅蛋脸') {
+        advice += '您的鹅蛋脸是标准脸型，面部比例协调，建议保持现有轮廓。';
+      } else if (faceShape === '圆脸') {
+        advice += '您的圆脸线条柔和可爱，建议通过面部提升或适当填充打造更清晰的轮廓。';
+      } else if (faceShape === '国字脸') {
+        advice += '您的国字脸轮廓分明，建议通过瘦脸针柔化面部线条。';
+      } else if (faceShape === '心形脸') {
+        advice += '您的心形脸精致立体，建议适当填充下巴使比例更协调。';
+      } else if (faceShape === '三角脸') {
+        advice += '您的三角脸上窄下宽，建议填充太阳穴平衡面部比例。';
+      } else {
+        advice += '您的脸型具有良好的基础，建议到院详细面诊获取个性化方案。';
+      }
+      
+      // 三庭建议
+      if (threeAssessment.includes('上庭偏长')) {
+        advice += '上庭稍长，建议通过发型或刘海修饰。';
+      } else if (threeAssessment.includes('上庭偏短')) {
+        advice += '上庭偏短，建议发际线造型或植发改善。';
+      } else if (threeAssessment.includes('下庭偏长')) {
+        advice += '下庭稍长，可考虑下巴微调。';
+      } else if (threeAssessment.includes('下庭偏短')) {
+        advice += '下庭偏短，建议下巴填充改善。';
+      }
+      
+      // 眼距建议
+      if (eyeAssess === '偏宽') {
+        advice += '眼距偏宽可通过开内眼角改善。';
+      } else if (eyeAssess === '偏窄') {
+        advice += '眼距偏窄适合通过妆容修饰。';
+      }
+      
+      // 嘴宽建议
+      if (mouthAssess === '偏大') {
+        advice += '嘴宽偏大可通过唇部塑形改善。';
+      } else if (mouthAssess === '偏小') {
+        advice += '嘴宽偏小可适当丰唇增加立体感。';
+      }
+      
+      // 年龄建议
+      if (age < 25) {
+        advice += `${gender}皮肤状态年轻，保持防晒和基础保湿即可。`;
+      } else if (age < 35) {
+        advice += `${age}岁建议开始基础抗衰，如光子嫩肤、水光针等。`;
+      } else if (age < 45) {
+        advice += `${age}岁建议定期做热玛吉、超声炮等紧致提升项目。`;
+      } else {
+        advice += `${age}岁建议综合抗衰方案，热玛吉+轮廓固定联合治疗。`;
+      }
+      
+      return advice || '您的面部比例非常标准，保持现有状态并注意日常护肤即可。';
     }
 
     function animateValue(id, start, end, duration) {
