@@ -108,7 +108,13 @@ export async function onRequestPost(context) {
       emotion: face.emotion?.type,
       glasses: face.glasses?.type,
       face_analysis: faceAnalysis,
-      advice: advice
+      advice: advice,
+      // 调试信息
+      debug: {
+        face_rect: face.face_rect,
+        landmark72_count: face.landmark72 ? face.landmark72.length : 0,
+        landmark72_sample: face.landmark72 ? face.landmark72.slice(0, 5) : []
+      }
     };
 
     return new Response(JSON.stringify(responseData), {
