@@ -61,7 +61,7 @@ export async function onRequestPost(context) {
         body: JSON.stringify({
           image: base64Data,
           image_type: 'BASE64',
-          face_field: 'age,beauty,gender,face_shape,expression,emotion,glasses,landmark72,face_rect'
+          face_field: 'age,beauty,gender,face_shape,expression,emotion,glasses,landmark'
         })
       }
     );
@@ -80,42 +80,33 @@ export async function onRequestPost(context) {
 
     const face = faceList[0];
 
-    // 5. 计算面部比例数据
-    let faceAnalysis = {};
-    if (face.landmark72 && face.landmark72.length > 0) {
-      try {
-        faceAnalysis = calculateFaceProportions(face, face.face_shape?.type);
-      } catch (e) {
-        console.error('计算失败:', e);
-        faceAnalysis = generateDefaultAnalysis(face.face_shape?.type);
-      }
-    } else {
-      faceAnalysis = generateDefaultAnalysis(face.face_shape?.type);
-    }
-
-    // 6. 评分改为80-100分
+    // 评分改为80-100分
     const beautyScore = 80 + Math.round((face.beauty || 0) * 0.2);
 
-    // 7. 生成专业医美建议
-    const advice = generateAdvice(face.face_shape?.type, face.gender?.type, face.age, face.beauty, faceAnalysis);
+    // 脸型中文映射
+    const faceShapeMap = {
+      'square': '国字脸',
+      'triangle': '三角脸',
+      'oval': '鹅蛋脸',
+      'heart': '心形脸',
+      'round': '圆脸'
+    };
+    const faceShapeCN = faceShapeMap[face.face_shape?.type] || '标准脸型';
+    const genderCN = face.gender?.type === 'male' ? '男性' : '女性';
 
+    // 简化版返回
     const responseData = {
       beauty: beautyScore,
       age: face.age,
       gender: face.gender?.type,
+      gender_cn: genderCN,
       face_shape: face.face_shape?.type,
+      face_shape_cn: faceShapeCN,
       expression: face.expression?.type,
       emotion: face.emotion?.type,
       glasses: face.glasses?.type,
-      face_analysis: faceAnalysis,
-      advice: advice,
-      // 调试信息
-      debug: {
-        face_rect: face.face_rect,
-        has_face_rect: !!face.face_rect,
-        landmark72_count: face.landmark72 ? face.landmark72.length : 0,
-        face_keys: face ? Object.keys(face) : []
-      }
+      // landmark 数量调试
+      landmark_count: face.landmark ? face.landmark.length : 0
     };
 
     return new Response(JSON.stringify(responseData), {
@@ -127,17 +118,6 @@ export async function onRequestPost(context) {
     return new Response(JSON.stringify({ error: err.message }), { status: 500 });
   }
 }
-
-// 计算面部比例数据
-function calculateFaceProportions(faceData, faceShape) {
-  let faceAnalysis = {};
-  
-  try {
-    const faceRect = faceData.face_rect;
-    
-    if (!faceRect) {
-      return generateDefaultAnalysis(faceShape);
-    }
     
     const faceWidth = faceRect.width;
     const faceHeight = faceRect.height;
