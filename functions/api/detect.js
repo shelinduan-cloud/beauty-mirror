@@ -1,24 +1,23 @@
-// node-functions/api/detect.js
+// functions/api/detect.js
 // 部署后访问路径：/api/detect
 
-export default async function onRequest(context) {
-  // CORS 处理
-  if (context.request.method === 'OPTIONS') {
-    return new Response('', {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type'
-      }
-    });
-  }
+// 处理 OPTIONS 预检请求
+export async function onRequestOptions() {
+  return new Response('', {
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type'
+    }
+  });
+}
 
-  if (context.request.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
-  }
+// 处理 POST 请求
+export async function onRequestPost(context) {
+  const { request } = context;
 
   try {
-    const { image } = await context.request.json();
+    const { image } = await request.json();
     if (!image) {
       return new Response(JSON.stringify({ error: '请上传图片' }), { status: 400 });
     }
