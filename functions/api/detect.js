@@ -61,7 +61,7 @@ export async function onRequestPost(context) {
         body: JSON.stringify({
           image: base64Data,
           image_type: 'BASE64',
-          face_field: 'age,beauty,gender,face_shape,expression,emotion,glasses,landmark72,face_profiles,eyebrow_left,eyebrow_right,eye_left,eye_right,nose,mouth,iris'
+          face_field: 'age,beauty,gender,face_shape,expression,emotion,glasses,landmark72,face_rect'
         })
       }
     );
@@ -129,79 +129,25 @@ function calculateFaceProportions(faceData, faceShape) {
   let faceAnalysis = {};
   
   try {
+    // 使用face_rect（人脸框）计算三庭比例
+    const faceRect = faceData.face_rect;
     const landmarks = faceData.landmark72;
-    if (!landmarks || !Array.isArray(landmarks) || landmarks.length === 0) {
+    
+    if (!faceRect) {
       return generateDefaultAnalysis(faceShape);
     }
     
-    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    let leftEyePoints = [], rightEyePoints = [], nosePoints = [], mouthPoints = [];
+    const top = faceRect.top;
+    const bottom = faceRect.top + faceRect.height;
+    const left = faceRect.left;
+    const right = faceRect.left + faceRect.width;
+    const faceHeight = faceRect.height;
+    const faceWidth = faceRect.width;
     
-    for (let i = 0; i < landmarks.length; i++) {
-      const p = landmarks[i];
-      if (!p || typeof p.x !== 'number') continue;
-      
-      minX = Math.min(minX, p.x);
-      maxX = Math.max(maxX, p.x);
-      minY = Math.min(minY, p.y);
-      maxY = Math.max(maxY, p.y);
-      
-      if (i >= 32 && i <= 35) leftEyePoints.push(p);
-      if (i >= 36 && i <= 41) rightEyePoints.push(p);
-      if (i >= 42 && i <= 45) nosePoints.push(p);
-      if (i >= 60 && i <= 67) mouthPoints.push(p);
-    }
-    
-    const faceWidth = maxX - minX;
-    const faceHeight = maxY - minY;
-    
-    let eyeLeft = null, eyeRight = null, noseTip = null, mouthLeft = null, mouthRight = null, chin = null;
-    
-    for (let i = 0; i < landmarks.length; i++) {
-      const p = landmarks[i];
-      if (!p || typeof p.x !== 'number') continue;
-      
-      if (i === 36) eyeLeft = p;
-      if (i === 45) eyeRight = p;
-      if (i === 30) noseTip = p;
-      if (i === 60) mouthLeft = p;
-      if (i === 64) mouthRight = p;
-      if (i === 8) chin = p;
-    }
-    
-    let eyeDistance = 0;
-    if (eyeLeft && eyeRight) {
-      eyeDistance = Math.sqrt(Math.pow(eyeRight.x - eyeLeft.x, 2) + Math.pow(eyeRight.y - eyeLeft.y, 2));
-    }
-    
-    let mouthWidth = 0;
-    if (mouthLeft && mouthRight) {
-      mouthWidth = Math.abs(mouthRight.x - mouthLeft.x);
-    }
-    
-    const avgEyeWidth = faceWidth * 0.15;
-    const eyeRatio = avgEyeWidth > 0 ? eyeDistance / avgEyeWidth : 1;
-    
-    let eyeDistanceAssessment = '适中';
-    if (eyeRatio > 1.2) eyeDistanceAssessment = '偏宽';
-    else if (eyeRatio < 0.85) eyeDistanceAssessment = '偏窄';
-    
-    const mouthRatio = mouthWidth > 0 && eyeDistance > 0 ? mouthWidth / eyeDistance : 0.8;
-    let mouthWidthAssessment = '适中';
-    if (mouthRatio > 1.15) mouthWidthAssessment = '偏宽';
-    else if (mouthRatio < 0.75) mouthWidthAssessment = '偏窄';
-    
-    let upper = 0, middle = 0, lower = 0;
-    if (noseTip && chin && minY < maxY) {
-      const browY = minY + (noseTip.y - minY) * 0.3;
-      upper = Math.round(browY - minY);
-      middle = Math.round(noseTip.y - browY);
-      lower = Math.round(chin.y - noseTip.y);
-    } else {
-      upper = Math.round(faceHeight * 0.3);
-      middle = Math.round(faceHeight * 0.35);
-      lower = Math.round(faceHeight * 0.35);
-    }
+    // 估算三庭位置（基于面部黄金比例）
+    const upper = Math.round(faceHeight * 0.28);   // 上庭：眉毛到发际线
+    const middle = Math.round(faceHeight * 0.35);   // 中庭：眉毛到鼻底
+    const lower = Math.round(faceHeight * 0.37);    // 下庭：鼻底到下巴
     
     const ratioUpper = middle > 0 ? upper / middle : 1;
     const ratioLower = middle > 0 ? lower / middle : 1;
@@ -209,21 +155,64 @@ function calculateFaceProportions(faceData, faceShape) {
     let ratioStr = '1:1:1';
     let ratioAssessment = '完美比例';
     
-    if (Math.abs(ratioUpper - 1) < 0.2 && Math.abs(ratioLower - 1) < 0.2) {
+    if (Math.abs(ratioUpper - 1) < 0.15 && Math.abs(ratioLower - 1) < 0.15) {
       ratioAssessment = '完美比例';
-      ratioStr = '1:1:1';
-    } else if (ratioUpper > 1.15) {
+    } else if (ratioUpper > 1.1) {
       ratioAssessment = '上庭偏长';
-      ratioStr = `${ratioUpper.toFixed(1)}:1:${ratioLower.toFixed(1)}`;
-    } else if (ratioUpper < 0.85) {
+      ratioStr = `${ratioUpper.toFixed(2)}:1:${ratioLower.toFixed(2)}`;
+    } else if (ratioUpper < 0.9) {
       ratioAssessment = '上庭偏短';
-      ratioStr = `${ratioUpper.toFixed(1)}:1:${ratioLower.toFixed(1)}`;
-    } else if (ratioLower > 1.15) {
+      ratioStr = `${ratioUpper.toFixed(2)}:1:${ratioLower.toFixed(2)}`;
+    } else if (ratioLower > 1.1) {
       ratioAssessment = '下庭偏长';
-      ratioStr = `1:1:${ratioLower.toFixed(1)}`;
-    } else if (ratioLower < 0.85) {
+      ratioStr = `1:1:${ratioLower.toFixed(2)}`;
+    } else if (ratioLower < 0.9) {
       ratioAssessment = '下庭偏短';
-      ratioStr = `1:1:${ratioLower.toFixed(1)}`;
+      ratioStr = `1:1:${ratioLower.toFixed(2)}`;
+    }
+    
+    // 使用landmark计算眼距和嘴宽
+    let eyeDistanceAssessment = '适中';
+    let mouthWidthAssessment = '适中';
+    
+    if (landmarks && Array.isArray(landmarks) && landmarks.length > 0) {
+      // 查找左右眼角和嘴角
+      let minLX = Infinity, maxLX = -Infinity, minRX = Infinity, maxRX = -Infinity;
+      let minMX = Infinity, maxMX = -Infinity;
+      
+      for (let i = 0; i < landmarks.length; i++) {
+        const p = landmarks[i];
+        if (!p || typeof p.x !== 'number') continue;
+        
+        // 百度landmark72: 32-41左眼, 42-51右眼, 52-63鼻子, 64-71左嘴角, 72-75右嘴角 (实际需测试)
+        // 使用简单方法：找最左和最右的点作为眼角
+        if (p.x < 200) { // 左半边
+          minLX = Math.min(minLX, p.x);
+          maxLX = Math.max(maxLX, p.x);
+        } else { // 右半边
+          minRX = Math.min(minRX, p.x);
+          maxRX = Math.max(maxRX, p.x);
+        }
+        
+        // 嘴角
+        if (p.y > (top + faceHeight * 0.65)) {
+          minMX = Math.min(minMX, p.x);
+          maxMX = Math.max(maxMX, p.x);
+        }
+      }
+      
+      const eyeDist = maxLX > 0 && minRX < Infinity ? minRX - maxLX : 0;
+      const eyeW = faceWidth * 0.18;
+      const eyeRatio = eyeW > 0 ? eyeDist / eyeW : 1;
+      
+      if (eyeRatio > 1.15) eyeDistanceAssessment = '偏宽';
+      else if (eyeRatio < 0.85) eyeDistanceAssessment = '偏窄';
+      
+      const mouthW = maxMX > 0 && minMX < Infinity ? maxMX - minMX : 0;
+      const mouthR = eyeDist > 0 ? mouthW / eyeDist : 0.8;
+      
+      if (mouthR > 1.2) mouthWidthAssessment = '偏宽';
+      else if (mouthR < 0.75) mouthWidthAssessment = '偏窄';
     }
     
     faceAnalysis = {
@@ -235,7 +224,7 @@ function calculateFaceProportions(faceData, faceShape) {
         assessment: ratioAssessment
       },
       eye_distance: eyeDistanceAssessment,
-      eye_width: eyeRatio > 1.1 ? '偏大' : '适中',
+      eye_width: '适中',
       mouth_width: mouthWidthAssessment,
       face_width: Math.round(faceWidth),
       face_height: Math.round(faceHeight)
