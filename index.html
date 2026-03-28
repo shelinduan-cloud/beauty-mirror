@@ -148,6 +148,62 @@
       display: inline-block;
       font-size: 16px;
     }
+    .score-main {
+      margin-bottom: 20px;
+    }
+    .score-info {
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(255,255,255,0.2);
+    }
+    .score-info .info-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .score-info .info-label {
+      font-size: 12px;
+      opacity: 0.8;
+    }
+    .score-info .info-value {
+      font-size: 18px;
+      font-weight: 600;
+    }
+    .detail-cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .detail-card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 16px;
+      text-align: center;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    }
+    .detail-icon {
+      font-size: 24px;
+      margin-bottom: 6px;
+    }
+    .detail-title {
+      color: #999;
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+    .detail-value {
+      color: #333;
+      font-size: 16px;
+      font-weight: 600;
+    }
+    .detail-desc {
+      color: #e85d75;
+      font-size: 11px;
+      margin-top: 4px;
+    }
     .result-cards {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -443,6 +499,18 @@
       <div class="upload-icon" onclick="document.getElementById('fileInput').click()">
         <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
       </div>
+      <p class="upload-text">上传一张正面照片</p>
+      <div class="btn-group" style="justify-content: center;">
+        <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">选择照片</button>
+      </div>
+      <div class="tips">
+        建议上传正面、无遮挡、光线充足的照片<br>支持 JPG、PNG 格式
+      </div>
+      <p class="privacy-hint">
+        您的照片仅用于分析，不会被保存或分享
+        <a href="javascript:void(0)" onclick="showPrivacy()">查看隐私政策</a>
+      </p>
+    </div>
       <p class="upload-text">点击上传照片或拍照</p>
       <div class="btn-group">
         <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">选择照片</button>
@@ -474,41 +542,59 @@
 
     <div id="resultView" class="result-area">
       <div class="beauty-score">
-        <div class="score-label">你的颜值分数</div>
-        <div class="score-value"><span id="beautyScore">0</span><span class="score-unit">分</span></div>
-        <div class="score-level" id="scoreLevel">美女一枚</div>
+        <div class="score-main">
+          <div class="score-label">颜值评分</div>
+          <div class="score-value"><span id="beautyScore">0</span><span class="score-unit">分</span></div>
+          <div class="score-level" id="scoreLevel">-</div>
+        </div>
+        <div class="score-info">
+          <div class="info-item">
+            <span class="info-label">年龄</span>
+            <span class="info-value" id="ageValue">-</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">性别</span>
+            <span class="info-value" id="genderValue">-</span>
+          </div>
+        </div>
       </div>
-      
-      <div class="result-cards">
-        <div class="result-card">
-          <div class="card-icon">🎂</div>
-          <div class="card-label">年龄</div>
-          <div class="card-value" id="ageValue">-</div>
+
+      <div class="detail-cards">
+        <div class="detail-card">
+          <div class="detail-icon">✨</div>
+          <div class="detail-title">脸型</div>
+          <div class="detail-value" id="faceShapeValue">-</div>
+          <div class="detail-desc" id="faceShapeDesc">-</div>
         </div>
-        <div class="result-card">
-          <div class="card-icon">👤</div>
-          <div class="card-label">性别</div>
-          <div class="card-value" id="genderValue">-</div>
+        <div class="detail-card">
+          <div class="detail-icon">📐</div>
+          <div class="detail-title">三庭比例</div>
+          <div class="detail-value" id="threeQuotientsValue">-</div>
+          <div class="detail-desc" id="threeQuotientsDesc">-</div>
         </div>
-        <div class="result-card">
-          <div class="card-icon">✨</div>
-          <div class="card-label">脸型</div>
-          <div class="card-value" id="faceShapeValue">-</div>
+        <div class="detail-card">
+          <div class="detail-icon">👁️</div>
+          <div class="detail-title">眼距</div>
+          <div class="detail-value" id="eyeDistanceValue">-</div>
+          <div class="detail-desc" id="eyeDistanceDesc">-</div>
         </div>
-        <div class="result-card">
-          <div class="card-icon">😊</div>
-          <div class="card-label">表情</div>
-          <div class="card-value" id="expressionValue">-</div>
+        <div class="detail-card">
+          <div class="detail-icon">👄</div>
+          <div class="detail-title">嘴宽</div>
+          <div class="detail-value" id="mouthWidthValue">-</div>
+          <div class="detail-desc" id="mouthWidthDesc">-</div>
         </div>
-        <div class="result-card">
-          <div class="card-icon">💭</div>
-          <div class="card-label">情绪</div>
-          <div class="card-value" id="emotionValue">-</div>
+        <div class="detail-card">
+          <div class="detail-icon">😊</div>
+          <div class="detail-title">表情</div>
+          <div class="detail-value" id="expressionValue">-</div>
+          <div class="detail-desc" id="expressionDesc">-</div>
         </div>
-        <div class="result-card">
-          <div class="card-icon">👨</div>
-          <div class="card-label">男生评分</div>
-          <div class="card-value" id="beautyMaleValue">-</div>
+        <div class="detail-card">
+          <div class="detail-icon">💭</div>
+          <div class="detail-title">情绪</div>
+          <div class="detail-value" id="emotionValue">-</div>
+          <div class="detail-desc" id="emotionDesc">-</div>
         </div>
       </div>
 
@@ -526,7 +612,6 @@
   </div>
 
   <input type="file" id="fileInput" accept="image/*" onchange="handleFileSelect(event)">
-  <video id="video" style="display:none" autoplay></video>
   <canvas id="canvas" style="display:none"></canvas>
 
   <script>
@@ -536,31 +621,6 @@
       const file = event.target.files[0];
       if (!file) return;
       processImage(file);
-    }
-
-    function takePhoto() {
-      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
-        .then(stream => {
-          const video = document.getElementById('video');
-          video.style.display = 'block';
-          video.srcObject = stream;
-          
-          video.onloadedmetadata = () => {
-            const canvas = document.getElementById('canvas');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            canvas.getContext('2d').drawImage(video, 0, 0);
-            
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-            processImage(dataURLToBlob(dataUrl));
-            
-            stream.getTracks().forEach(track => track.stop());
-            video.style.display = 'none';
-          };
-        })
-        .catch(err => {
-          showError('无法访问摄像头，请确保授予权限');
-        });
     }
 
     function dataURLToBlob(dataURL) {
@@ -643,28 +703,24 @@
       document.getElementById('resultView').style.display = 'block';
       document.getElementById('errorView').style.display = 'none';
       
-      let rawScore = data.beauty || data.beauty_male || 0;
-      const score = Math.min(100, Math.round(rawScore * 1.5));
+      // 评分80-100分
+      let rawScore = data.beauty || 0;
+      const score = 80 + Math.round(rawScore * 0.2);
       animateValue('beautyScore', 0, score, 1500);
       
-      let level = '甜美可人';
-      if (score >= 95) level = '绝色天香';
-      else if (score >= 90) level = '惊为天人';
-      else if (score >= 85) level = '倾国倾城';
-      else if (score >= 80) level = '国色天香';
-      else if (score >= 75) level = '闭月羞花';
-      else if (score >= 70) level = '沉鱼落雁';
-      else if (score >= 65) level = '貌美如花';
-      else if (score >= 60) level = '清秀脱俗';
-      else if (score >= 55) level = '小家碧玉';
-      else if (score >= 50) level = '清新可人';
-      else if (score >= 45) level = '温婉动人';
-      else level = '潜力无限';
+      // 评分等级（80-100分）
+      let level = '中上之姿';
+      if (score >= 95) level = '卓越之美';
+      else if (score >= 90) level = '极上之颜';
+      else if (score >= 85) level = '上等容貌';
+      else if (score >= 80) level = '中上之姿';
       document.getElementById('scoreLevel').textContent = level;
       
+      // 基本信息
       document.getElementById('ageValue').textContent = data.age ? Math.round(data.age) + '岁' : '-';
       document.getElementById('genderValue').textContent = data.gender === 'male' ? '男生' : '女生';
       
+      // 脸型分析
       const faceShapeMap = {
         'square': '国字脸',
         'triangle': '三角脸',
@@ -672,15 +728,46 @@
         'heart': '心形脸',
         'round': '圆脸'
       };
+      const faceShapeDescMap = {
+        'square': '轮廓分明',
+        'triangle': '上窄下宽',
+        'oval': '标准脸型',
+        'heart': '精致立体',
+        'round': '圆润可爱'
+      };
       document.getElementById('faceShapeValue').textContent = faceShapeMap[data.face_shape] || '-';
+      document.getElementById('faceShapeDesc').textContent = faceShapeDescMap[data.face_shape] || '-';
       
+      // 三庭比例
+      const faceAnalysis = data.face_analysis || {};
+      const threeQ = faceAnalysis.three_quotients || {};
+      document.getElementById('threeQuotientsValue').textContent = threeQ.ratio || '-';
+      document.getElementById('threeQuotientsDesc').textContent = threeQ.assessment || '-';
+      
+      // 眼距
+      const eyeDist = faceAnalysis.eye_distance || '-';
+      document.getElementById('eyeDistanceValue').textContent = eyeDist;
+      if (eyeDist === '偏宽') document.getElementById('eyeDistanceDesc').textContent = '可调整';
+      else if (eyeDist === '偏窄') document.getElementById('eyeDistanceDesc').textContent = '显年轻';
+      else document.getElementById('eyeDistanceDesc').textContent = '比例协调';
+      
+      // 嘴宽
+      const mouthW = faceAnalysis.mouth_width || '-';
+      document.getElementById('mouthWidthValue').textContent = mouthW;
+      if (mouthW === '偏宽') document.getElementById('mouthWidthDesc').textContent = '可调整';
+      else if (mouthW === '偏窄') document.getElementById('mouthWidthDesc').textContent = '显精致';
+      else document.getElementById('mouthWidthDesc').textContent = '比例协调';
+      
+      // 表情
       const expressionMap = {
         'none': '严肃',
         'smile': '微笑',
         'laugh': '大笑'
       };
       document.getElementById('expressionValue').textContent = expressionMap[data.expression] || '-';
+      document.getElementById('expressionDesc').textContent = data.expression === 'smile' ? '亲和力强' : data.expression === 'none' ? '沉稳大气' : '活力满满';
       
+      // 情绪
       const emotionMap = {
         'angry': '生气',
         'disgust': '厌恶',
@@ -691,8 +778,16 @@
         'neutral': '平静'
       };
       document.getElementById('emotionValue').textContent = emotionMap[data.emotion] || '-';
-      
-      document.getElementById('beautyMaleValue').textContent = data.beauty_male ? Math.round(data.beauty_male) + '分' : '-';
+      const emotionDescMap = {
+        'happy': '积极向上',
+        'neutral': '沉稳内敛',
+        'surprise': '活泼可爱',
+        'sad': '惹人怜爱',
+        'angry': '气场强大',
+        'fear': '我见犹怜',
+        'disgust': '高冷女神'
+      };
+      document.getElementById('emotionDesc').textContent = emotionDescMap[data.emotion] || '-';
       
       // 显示医美建议
       if (data.advice) {

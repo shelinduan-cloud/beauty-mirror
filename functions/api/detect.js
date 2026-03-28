@@ -52,7 +52,7 @@ export async function onRequestPost(context) {
       return new Response(JSON.stringify({ error: '获取百度授权失败' }), { status: 500 });
     }
 
-    // 4. 调用百度人脸检测接口
+    // 4. 调用百度人脸检测接口，增加landmark72
     const baiduRes = await fetch(
       `https://aip.baidubce.com/rest/2.0/face/v3/detect?access_token=${accessToken}`,
       {
@@ -61,7 +61,7 @@ export async function onRequestPost(context) {
         body: JSON.stringify({
           image: base64Data,
           image_type: 'BASE64',
-          face_field: 'age,beauty,gender,face_shape,expression,emotion'
+          face_field: 'age,beauty,gender,face_shape,expression,emotion,glasses,landmark72'
         })
       }
     );
@@ -79,16 +79,27 @@ export async function onRequestPost(context) {
 
     const face = faceList[0];
 
-    // 5. 生成医美建议
-    const advice = generateAdvice(face.face_shape?.type, face.gender?.type, face.age, face.beauty);
+    // 5. 计算面部比例数据
+    let faceAnalysis = {};
+    if (face.landmark72 && face.landmark72.length > 0) {
+      faceAnalysis = calculateFaceProportions(face.landmark72, face.face_shape?.type);
+    }
+
+    // 6. 评分改为80-100分
+    const beautyScore = 80 + Math.round((face.beauty || 0) * 0.2);
+
+    // 7. 生成专业医美建议
+    const advice = generateAdvice(face.face_shape?.type, face.gender?.type, face.age, face.beauty, faceAnalysis);
 
     const responseData = {
-      beauty: face.beauty,
+      beauty: beautyScore,
       age: face.age,
       gender: face.gender?.type,
       face_shape: face.face_shape?.type,
       expression: face.expression?.type,
       emotion: face.emotion?.type,
+      glasses: face.glasses?.type,
+      face_analysis: faceAnalysis,
       advice: advice
     };
 
@@ -102,8 +113,96 @@ export async function onRequestPost(context) {
   }
 }
 
-// 生成医美建议函数
-function generateAdvice(face_shape, gender, age, beauty) {
+// 计算面部比例数据
+function calculateFaceProportions(landmarks, faceShape) {
+  const getPoint = (index) => landmarks[index] || { x: 0, y: 0 };
+  
+  // 关键点索引（基于百度72点模型）
+  const leftEyeOuter = getPoint(39);
+  const rightEyeOuter = getPoint(42);
+  const leftEyeInner = getPoint(36);
+  const rightEyeInner = getPoint(45);
+  const noseTip = getPoint(30);
+  const chin = getPoint(8);
+  const leftMouthCorner = getPoint(60);
+  const rightMouthCorner = getPoint(64);
+  const browLeft = getPoint(21);
+  const browRight = getPoint(22);
+  
+  // 眼距（内眼角距离）
+  const eyeDistance = Math.abs(rightEyeInner.x - leftEyeInner.x);
+  const leftEyeWidth = Math.abs(leftEyeOuter.x - leftEyeInner.x);
+  const rightEyeWidth = Math.abs(rightEyeInner.x - rightEyeInner.x);
+  const avgEyeWidth = (leftEyeWidth + rightEyeWidth) / 2;
+  
+  // 嘴宽
+  const mouthWidth = Math.abs(rightMouthCorner.x - leftMouthCorner.x);
+  
+  // 三庭比例（以中庭为基准）
+  const browY = (browLeft.y + browRight.y) / 2;
+  const chinY = chin.y;
+  const noseY = noseTip.y;
+  const topY = Math.min(...landmarks.map(p => p.y));
+  
+  const upper = browY - topY;
+  const middle = noseY - browY;
+  const lower = chinY - noseY;
+  
+  // 归一化
+  const ratioUpper = middle > 0 ? (upper / middle) : 1;
+  const ratioLower = middle > 0 ? (lower / middle) : 1;
+  
+  let ratioStr = '1:1:1';
+  let ratioAssessment = '完美比例';
+  if (Math.abs(ratioUpper - 1) < 0.15 && Math.abs(ratioLower - 1) < 0.15) {
+    ratioAssessment = '完美比例';
+    ratioStr = '1:1:1';
+  } else if (ratioUpper > 1.1) {
+    ratioAssessment = '上庭偏长';
+    ratioStr = `${ratioUpper.toFixed(1)}:1:${ratioLower.toFixed(1)}`;
+  } else if (ratioUpper < 0.9) {
+    ratioAssessment = '上庭偏短';
+    ratioStr = `${ratioUpper.toFixed(1)}:1:${ratioLower.toFixed(1)}`;
+  } else if (ratioLower > 1.1) {
+    ratioAssessment = '下庭偏长';
+    ratioStr = `1:1:${ratioLower.toFixed(1)}`;
+  } else if (ratioLower < 0.9) {
+    ratioAssessment = '下庭偏短';
+    ratioStr = `1:1:${ratioLower.toFixed(1)}`;
+  }
+  
+  // 眼距评估
+  let eyeDistanceAssessment = '适中';
+  if (eyeDistance > avgEyeWidth * 1.3) {
+    eyeDistanceAssessment = '偏宽';
+  } else if (eyeDistance < avgEyeWidth * 0.8) {
+    eyeDistanceAssessment = '偏窄';
+  }
+  
+  // 嘴宽评估
+  let mouthWidthAssessment = '适中';
+  if (mouthWidth > eyeDistance * 1.3) {
+    mouthWidthAssessment = '偏宽';
+  } else if (mouthWidth < eyeDistance * 0.8) {
+    mouthWidthAssessment = '偏窄';
+  }
+  
+  return {
+    three_quotients: {
+      upper: Math.round(upper),
+      middle: Math.round(middle),
+      lower: Math.round(lower),
+      ratio: ratioStr,
+      assessment: ratioAssessment
+    },
+    eye_distance: eyeDistanceAssessment,
+    eye_width: avgEyeWidth > eyeDistance ? '偏大' : '适中',
+    mouth_width: mouthWidthAssessment
+  };
+}
+
+// 生成医美建议函数（80-100分评分，结合详细面部分析）
+function generateAdvice(face_shape, gender, age, beauty, faceAnalysis) {
   const faceShapeMap = {
     'square': '国字脸',
     'triangle': '三角脸',
@@ -115,36 +214,64 @@ function generateAdvice(face_shape, gender, age, beauty) {
   const genderCN = gender === 'male' ? '男性' : '女性';
   const ageNum = Math.round(age || 25);
   
-  let ageGroup = '';
-  if (ageNum <= 25) ageGroup = '青年';
-  else if (ageNum <= 35) ageGroup = '青壮年';
-  else if (ageNum <= 45) ageGroup = '中年';
-  else if (ageNum <= 55) ageGroup = '熟龄';
-  else ageGroup = '中老年';
-
-  const beautyScore = Math.min(100, Math.round((beauty || 0) * 1.5));
-  const beautyLevel = beautyScore >= 85 ? '出众' : beautyScore >= 75 ? '优秀' : beautyScore >= 65 ? '良好' : beautyScore >= 55 ? '不错' : '需改善';
+  // 评分80-100分
+  const beautyScore = 80 + Math.round((beauty || 0) * 0.2);
+  const beautyLevel = beautyScore >= 95 ? '卓越之美' : beautyScore >= 90 ? '极上之颜' : beautyScore >= 85 ? '上等容貌' : '中上之姿';
+  
+  const threeQ = faceAnalysis?.three_quotients || {};
+  const ratioAssessment = threeQ.assessment || '';
+  const eyeDist = faceAnalysis?.eye_distance || '';
+  const mouthW = faceAnalysis?.mouth_width || '';
   
   let summary = '';
   let suggestions = [];
+  let highlights = [];
 
+  // 优点分析
+  if (ratioAssessment === '完美比例') {
+    highlights.push('三庭比例完美协调');
+  }
+  if (eyeDist === '适中') {
+    highlights.push('眼距比例协调自然');
+  }
+  if (mouthW === '适中') {
+    highlights.push('嘴部比例和谐');
+  }
+  if (face_shape === 'oval') {
+    highlights.push('鹅蛋脸型标准美观');
+  }
+  
   if (face_shape === 'round') {
-    summary = `您的脸型为圆形脸，年龄约${ageNum}岁，${genderCN}性。圆形脸型给人可爱、年轻的印象，但面部轮廓相对扁平，缺乏立体感。根据三庭五眼的美学标准，您的颜值评分高达${beautyScore}分，面部比例${beautyLevel}，展现独特魅力！`;
+    summary = `您的脸型为圆形脸，年龄约${ageNum}岁，${genderCN}性。面部${ratioAssessment}，${eyeDist === '适中' ? '眼距协调' : ''}。综合评估您的颜值评分为${beautyScore}分（${beautyLevel}）。`;
     
     if (gender === 'female') {
       if (ageNum <= 30) {
         suggestions = [
-          { title: '面部轮廓', content: '建议通过注射瘦脸针缩小面部宽度，打造小脸效果。可配合玻尿酸填充下巴，提升面部立体感，使脸型更加精致。' },
-          { title: '皮肤管理', content: `${ageNum}岁是皮肤状态最佳的时期，建议定期进行光子嫩肤、水光针等保养项目，维持皮肤弹性和水分，预防初老。` },
-          { title: '日常护理', content: '建议使用含胶原蛋白、透明质酸的护肤品，注重防晒（SPF30+），保持规律作息，避免熬夜导致皮肤暗沉。' }
+          { title: '轮廓优化', content: '建议通过瘦脸针改善面部轮廓，缩小面部宽度，使脸型更加精致立体。' },
+          { title: '皮肤管理', content: `${ageNum}岁皮肤状态最佳，建议定期光子嫩肤、水光针维护，保持肌肤弹性。` },
+          { title: '日常保养', content: '注重防晒和规律作息，建议使用含透明质酸的护肤品。' }
         ];
       } else if (ageNum <= 45) {
         suggestions = [
-          { title: '面部轮廓', content: '建议通过瘦脸针改善面部轮廓，同时可考虑玻尿酸填充太阳穴和苹果肌，提升面部立体感。' },
-          { title: '抗衰管理', content: `${ageNum}岁进入抗衰关键期，建议进行热玛吉或超声刀治疗，提升面部紧致度，改善轻度松弛和细纹。` },
-          { title: '日常护理', content: '建议使用含视黄醇、肽类的抗衰护肤品，配合精华液和眼霜，重点关注眼周和嘴角的细微变化。' }
+          { title: '轮廓提升', content: '建议瘦脸针配合玻尿酸填充太阳穴和苹果肌，提升面部立体感。' },
+          { title: '抗衰管理', content: `${ageNum}岁进入抗衰关键期，建议热玛吉或超声刀治疗，提升紧致度。` },
+          { title: '日常保养', content: '使用含视黄醇、肽类的抗衰护肤品，配合精华液护理。' }
         ];
       } else {
+        suggestions = [
+          { title: '轮廓填充', content: '建议玻尿酸填充太阳穴、面颊和下巴，改善面部凹陷。' },
+          { title: '综合抗衰', content: `${ageNum}岁建议热玛吉+超声刀联合治疗，配合肉毒素除皱。` },
+          { title: '日常保养', content: '使用高端抗衰护肤品，定期做面部按摩促进血液循环。' }
+        ];
+      }
+    } else {
+      suggestions = [
+        { title: '轮廓改善', content: '圆形脸型年轻稚嫩，建议瘦脸针增加面部硬朗感。' },
+        { title: '皮肤管理', content: '光子嫩肤改善肤色，注意日常防晒和清洁。' },
+        { title: '日常保养', content: '使用清爽控油护肤品，保持健康生活方式。' }
+      ];
+    }
+  }
         suggestions = [
           { title: '面部轮廓', content: '建议通过玻尿酸填充提升面部轮廓，重点填充太阳穴、面颊和下巴，改善面部凹陷问题。' },
           { title: '抗衰管理', content: `${ageNum}岁需要综合抗衰方案，建议进行热玛吉+超声刀联合治疗，配合肉毒素除皱，全面提升面部紧致度。` },
