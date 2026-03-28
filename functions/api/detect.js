@@ -68,9 +68,6 @@ export async function onRequestPost(context) {
 
     const result = await baiduRes.json();
     
-    // 调试：打印百度返回的完整结果
-    console.log('百度返回结果:', JSON.stringify(result).substring(0, 2000));
-    
     // 百度返回错误时 result 中包含 error_code
     if (result.error_code) {
       return new Response(JSON.stringify({ error: `百度API错误: ${result.error_msg}` }), { status: 400 });
@@ -83,34 +80,8 @@ export async function onRequestPost(context) {
 
     const face = faceList[0];
 
-    // 调试：返回百度原始数据
-    const responseData = {
-      beauty: 80,
-      age: face.age,
-      gender: face.gender?.type,
-      face_shape: face.face_shape?.type,
-      expression: face.expression?.type,
-      emotion: face.emotion?.type,
-      glasses: face.glasses?.type,
-      face_rect: face.face_rect,
-      landmark72: face.landmark72 ? face.landmark72.slice(0, 10) : null,
-      landmark72_length: face.landmark72 ? face.landmark72.length : 0,
-      debug_info: {
-        has_face_rect: !!face.face_rect,
-        has_landmark72: !!(face.landmark72 && face.landmark72.length > 0)
-      }
-    };
-
-    return new Response(JSON.stringify(responseData), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
-    });
-
     // 5. 计算面部比例数据
     let faceAnalysis = {};
-    console.log('landmark72类型:', typeof face.landmark72, Array.isArray(face.landmark72));
-    console.log('landmark72长度:', face.landmark72 ? face.landmark72.length : 0);
-    
     if (face.landmark72 && face.landmark72.length > 0) {
       try {
         faceAnalysis = calculateFaceProportions(face, face.face_shape?.type);
@@ -119,7 +90,6 @@ export async function onRequestPost(context) {
         faceAnalysis = generateDefaultAnalysis(face.face_shape?.type);
       }
     } else {
-      console.log('无可用landmark72数据');
       faceAnalysis = generateDefaultAnalysis(face.face_shape?.type);
     }
 
