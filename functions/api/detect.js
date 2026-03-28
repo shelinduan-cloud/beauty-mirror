@@ -132,9 +132,8 @@ export async function onRequestPost(context) {
   }
 }
 
-// 计算面部比例数据
+// 计算面部比例数据（修正版，基于百度150点命名）
 function calculateFaceProportions(landmark150, faceShape) {
-  // landmark150是对象，不是数组
   if (!landmark150 || typeof landmark150 !== 'object') {
     return {
       three_quotients: { upper: 0, middle: 0, lower: 0, ratio: '0:0:0', assessment: '数据不足' },
@@ -144,115 +143,128 @@ function calculateFaceProportions(landmark150, faceShape) {
   }
 
   try {
-    // 百度landmark150关键点名称
-    // 眉毛: eyebrow_left_* , eyebrow_right_*
-    // 眼睛: eye_left_* , eye_right_*
-    // 鼻子: nose_*
-    // 嘴巴: mouth_*
-    // 下巴: chin_*
-    
-    const getPoint = (name) => landmark150[name];
-    
-    // 获取关键点坐标
-    const leftEyeLeft = getPoint('eye_left_left_corner');
-    const leftEyeRight = getPoint('eye_left_right_corner');
-    const rightEyeLeft = getPoint('eye_right_left_corner');
-    const rightEyeRight = getPoint('eye_right_right_corner');
+    // 辅助函数：安全获取点坐标
+    const getPoint = (name) => {
+      const p = landmark150[name];
+      if (p && typeof p.x === 'number' && typeof p.y === 'number') {
+        return { x: p.x, y: p.y };
+      }
+      return null;
+    };
+
+    // 眼睛
+    const leftEyeInner = getPoint('eye_left_right_corner');
+    const leftEyeOuter = getPoint('eye_left_left_corner');
+    const rightEyeInner = getPoint('eye_right_left_corner');
+    const rightEyeOuter = getPoint('eye_right_right_corner');
+    // 眉毛
+    const leftEyebrow = getPoint('eyebrow_left_center');
+    const rightEyebrow = getPoint('eyebrow_right_center');
+    // 鼻子
     const noseTip = getPoint('nose_tip');
+    // 嘴巴
     const mouthLeft = getPoint('mouth_left_corner');
     const mouthRight = getPoint('mouth_right_corner');
+    // 下巴
     const chin = getPoint('chin');
-    
-    // 眉毛点
-    const browLeft = getPoint('eyebrow_left_left_corner') || getPoint('eyebrow_left_right_corner');
-    const browRight = getPoint('eyebrow_right_left_corner') || getPoint('eyebrow_right_right_corner');
-    
-    // 计算人脸边界
-    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    const allPoints = [leftEyeLeft, leftEyeRight, rightEyeLeft, rightEyeRight, noseTip, mouthLeft, mouthRight, chin, browLeft, browRight];
-    
-    for (const p of allPoints) {
-      if (p && typeof p.x === 'number') {
-        minX = Math.min(minX, p.x);
-        maxX = Math.max(maxX, p.x);
+
+    // 获取所有点的坐标用于计算边界
+    let minY = Infinity, maxY = -Infinity, minX = Infinity, maxX = -Infinity;
+    for (const key in landmark150) {
+      const p = landmark150[key];
+      if (p && typeof p.y === 'number') {
         minY = Math.min(minY, p.y);
         maxY = Math.max(maxY, p.y);
+        minX = Math.min(minX, p.x);
+        maxX = Math.max(maxX, p.x);
       }
     }
-    
-    if (minX === Infinity) {
-      return {
-        three_quotients: { upper: 0, middle: 0, lower: 0, ratio: '0:0:0', assessment: '关键点不足' },
-        eye_distance: '-',
-        mouth_width: '-'
-      };
-    }
-    
+
     const faceWidth = maxX - minX;
     const faceHeight = maxY - minY;
-    
-    // 计算三庭
-    const browY = browLeft && browRight ? (browLeft.y + browRight.y) / 2 : minY + faceHeight * 0.25;
-    const noseY = noseTip ? noseTip.y : minY + faceHeight * 0.55;
-    const chinY = chin ? chin.y : maxY;
-    
-    const upper = Math.round(browY - minY);
-    const middle = Math.round(noseY - browY);
-    const lower = Math.round(chinY - noseY);
-    
-    // 计算眼距（内眼角距离）
-    let eyeDist = 0;
-    if (leftEyeRight && rightEyeLeft) {
-      eyeDist = Math.round(Math.sqrt(
-        Math.pow(rightEyeLeft.x - leftEyeRight.x, 2) + 
-        Math.pow(rightEyeLeft.y - leftEyeRight.y, 2)
-      ));
+
+    // 计算眉毛平均 y 值
+    let browY = null;
+    if (leftEyebrow && rightEyebrow) {
+      browY = (leftEyebrow.y + rightEyebrow.y) / 2;
+    } else if (leftEyebrow) {
+      browY = leftEyebrow.y;
+    } else if (rightEyebrow) {
+      browY = rightEyebrow.y;
     }
-    
-    // 计算嘴宽
+
+    // 如果没有眉毛，用左眼上沿近似
+    if (browY === null && leftEyeInner) {
+      browY = leftEyeInner.y - 15;
+    }
+
+    // 三庭计算
+    const foreheadY = browY !== null ? browY - (browY - minY) * 0.3 : minY;
+    const noseY = noseTip ? noseTip.y : (browY !== null ? browY + (maxY - browY) * 0.4 : maxY * 0.6);
+    const chinY = chin ? chin.y : maxY;
+
+    const upper = Math.max(0, (browY !== null ? browY : foreheadY) - foreheadY);
+    const middle = Math.max(0, noseY - (browY !== null ? browY : foreheadY));
+    const lower = Math.max(0, chinY - noseY);
+
+    // 眼距（内眼角距离）
+    let eyeDist = 0;
+    if (leftEyeInner && rightEyeInner) {
+      eyeDist = Math.hypot(rightEyeInner.x - leftEyeInner.x, rightEyeInner.y - leftEyeInner.y);
+    }
+
+    // 嘴宽
     let mouthDist = 0;
     if (mouthLeft && mouthRight) {
-      mouthDist = Math.round(Math.abs(mouthRight.x - mouthLeft.x));
+      mouthDist = Math.abs(mouthRight.x - mouthLeft.x);
     }
-    
-    // 评估
-    const ratioUpper = middle > 0 ? upper / middle : 0;
-    const ratioLower = middle > 0 ? lower / middle : 0;
-    let ratioStr = `${ratioUpper.toFixed(2)}:1:${ratioLower.toFixed(2)}`;
+
+    // 计算三庭比例字符串
+    let ratioStr = `${upper.toFixed(2)}:${middle.toFixed(2)}:${lower.toFixed(2)}`;
     let ratioAssessment = '标准';
-    if (Math.abs(ratioUpper - 0.86) < 0.15 && Math.abs(ratioLower - 1.06) < 0.15) {
-      ratioAssessment = '标准三庭';
-    } else if (ratioUpper > 1) {
-      ratioAssessment = '上庭偏长';
-    } else if (ratioUpper < 0.75) {
-      ratioAssessment = '上庭偏短';
-    } else if (ratioLower > 1.2) {
-      ratioAssessment = '下庭偏长';
-    } else if (ratioLower < 0.9) {
-      ratioAssessment = '下庭偏短';
+    if (upper > 0 && middle > 0 && lower > 0) {
+      const upperRatio = upper / middle;
+      const lowerRatio = lower / middle;
+      if (Math.abs(upperRatio - 0.86) < 0.15 && Math.abs(lowerRatio - 1.06) < 0.15) {
+        ratioAssessment = '标准三庭';
+      } else if (upperRatio > 1.0) {
+        ratioAssessment = '上庭偏长';
+      } else if (upperRatio < 0.75) {
+        ratioAssessment = '上庭偏短';
+      } else if (lowerRatio > 1.2) {
+        ratioAssessment = '下庭偏长';
+      } else if (lowerRatio < 0.9) {
+        ratioAssessment = '下庭偏短';
+      }
     }
-    
-    const eyeRatio = faceWidth > 0 ? eyeDist / faceWidth : 0;
+
+    // 眼距评估
     let eyeAssessment = '标准';
-    if (eyeRatio > 0.32) eyeAssessment = '偏宽';
-    else if (eyeRatio < 0.26) eyeAssessment = '偏窄';
-    
-    const mouthRatio = faceWidth > 0 ? mouthDist / faceWidth : 0;
+    if (faceWidth > 0 && eyeDist > 0) {
+      const eyeRatio = eyeDist / faceWidth;
+      if (eyeRatio > 0.32) eyeAssessment = '偏宽';
+      else if (eyeRatio < 0.26) eyeAssessment = '偏窄';
+    }
+
+    // 嘴宽评估
     let mouthAssessment = '标准';
-    if (mouthRatio > 0.4) mouthAssessment = '偏大';
-    else if (mouthRatio < 0.32) mouthAssessment = '偏小';
-    
+    if (faceWidth > 0 && mouthDist > 0) {
+      const mouthRatio = mouthDist / faceWidth;
+      if (mouthRatio > 0.4) mouthAssessment = '偏大';
+      else if (mouthRatio < 0.32) mouthAssessment = '偏小';
+    }
+
     return {
       three_quotients: {
-        upper: upper,
-        middle: middle,
-        lower: lower,
+        upper: Math.round(upper),
+        middle: Math.round(middle),
+        lower: Math.round(lower),
         ratio: ratioStr,
         assessment: ratioAssessment
       },
-      eye_distance: `${eyeDist}px (占脸宽${Math.round(eyeRatio*100)}%)`,
+      eye_distance: eyeDist > 0 ? `${Math.round(eyeDist)}px (占脸宽${Math.round((eyeDist / faceWidth) * 100)}%)` : '-',
       eye_assessment: eyeAssessment,
-      mouth_width: `${mouthDist}px (占脸宽${Math.round(mouthRatio*100)}%)`,
+      mouth_width: mouthDist > 0 ? `${Math.round(mouthDist)}px (占脸宽${Math.round((mouthDist / faceWidth) * 100)}%)` : '-',
       mouth_assessment: mouthAssessment,
       face_width: Math.round(faceWidth),
       face_height: Math.round(faceHeight)
