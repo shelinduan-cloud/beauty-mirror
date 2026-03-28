@@ -717,17 +717,22 @@
       };
       document.getElementById('faceShapeDesc').textContent = faceShapeDescMap[data.face_shape] || '-';
       
-      // 三庭比例 - 暂时显示"待完善"
-      document.getElementById('threeQuotientsValue').textContent = '-';
-      document.getElementById('threeQuotientsDesc').textContent = '待完善';
+      // 三庭比例
+      const faceAnalysis = data.face_analysis || {};
+      const threeQ = faceAnalysis.three_quotients || {};
+      const upper = threeQ.upper || 0;
+      const middle = threeQ.middle || 0;
+      const lower = threeQ.lower || 0;
+      document.getElementById('threeQuotientsValue').textContent = `${upper}:${middle}:${lower}`;
+      document.getElementById('threeQuotientsDesc').textContent = threeQ.assessment || '-';
       
-      // 眼距 - 暂时显示"待完善"
-      document.getElementById('eyeDistanceValue').textContent = '-';
-      document.getElementById('eyeDistanceDesc').textContent = '待完善';
+      // 眼距
+      document.getElementById('eyeDistanceValue').textContent = faceAnalysis.eye_distance || '-';
+      document.getElementById('eyeDistanceDesc').textContent = faceAnalysis.eye_assessment || '-';
       
-      // 嘴宽 - 暂时显示"待完善"
-      document.getElementById('mouthWidthValue').textContent = '-';
-      document.getElementById('mouthWidthDesc').textContent = '待完善';
+      // 嘴宽
+      document.getElementById('mouthWidthValue').textContent = faceAnalysis.mouth_width || '-';
+      document.getElementById('mouthWidthDesc').textContent = faceAnalysis.mouth_assessment || '-';
       
       // 表情
       const expressionMap = {
