@@ -724,25 +724,25 @@
       document.getElementById('faceShapeValue').textContent = faceShapeMap[data.face_shape] || '-';
       document.getElementById('faceShapeDesc').textContent = faceShapeDescMap[data.face_shape] || '-';
       
-      // 三庭比例
+      // 三庭比例 - 显示真实数值
       const faceAnalysis = data.face_analysis || {};
       const threeQ = faceAnalysis.three_quotients || {};
-      document.getElementById('threeQuotientsValue').textContent = threeQ.ratio || '-';
+      const upper = threeQ.upper || 0;
+      const middle = threeQ.middle || 0;
+      const lower = threeQ.lower || 0;
+      document.getElementById('threeQuotientsValue').textContent = `${upper}:${middle}:${lower}`;
       document.getElementById('threeQuotientsDesc').textContent = threeQ.assessment || '-';
       
-      // 眼距
+      // 眼距 - 显示像素值和百分比
       const eyeDist = faceAnalysis.eye_distance || '-';
+      const eyeScore = faceAnalysis.eye_distance_score || 0;
       document.getElementById('eyeDistanceValue').textContent = eyeDist;
-      if (eyeDist === '偏宽') document.getElementById('eyeDistanceDesc').textContent = '可调整';
-      else if (eyeDist === '偏窄') document.getElementById('eyeDistanceDesc').textContent = '显年轻';
-      else document.getElementById('eyeDistanceDesc').textContent = '比例协调';
+      document.getElementById('eyeDistanceDesc').textContent = faceAnalysis.eye_assessment || '-';
       
-      // 嘴宽
+      // 嘴宽 - 显示像素值和百分比
       const mouthW = faceAnalysis.mouth_width || '-';
       document.getElementById('mouthWidthValue').textContent = mouthW;
-      if (mouthW === '偏宽') document.getElementById('mouthWidthDesc').textContent = '可调整';
-      else if (mouthW === '偏窄') document.getElementById('mouthWidthDesc').textContent = '显精致';
-      else document.getElementById('mouthWidthDesc').textContent = '比例协调';
+      document.getElementById('mouthWidthDesc').textContent = faceAnalysis.mouth_assessment || '-';
       
       // 表情
       const expressionMap = {
