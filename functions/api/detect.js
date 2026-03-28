@@ -83,6 +83,29 @@ export async function onRequestPost(context) {
 
     const face = faceList[0];
 
+    // 调试：返回百度原始数据
+    const responseData = {
+      beauty: 80,
+      age: face.age,
+      gender: face.gender?.type,
+      face_shape: face.face_shape?.type,
+      expression: face.expression?.type,
+      emotion: face.emotion?.type,
+      glasses: face.glasses?.type,
+      face_rect: face.face_rect,
+      landmark72: face.landmark72 ? face.landmark72.slice(0, 10) : null,
+      landmark72_length: face.landmark72 ? face.landmark72.length : 0,
+      debug_info: {
+        has_face_rect: !!face.face_rect,
+        has_landmark72: !!(face.landmark72 && face.landmark72.length > 0)
+      }
+    };
+
+    return new Response(JSON.stringify(responseData), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+    });
+
     // 5. 计算面部比例数据
     let faceAnalysis = {};
     console.log('landmark72类型:', typeof face.landmark72, Array.isArray(face.landmark72));
