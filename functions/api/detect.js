@@ -112,8 +112,9 @@ export async function onRequestPost(context) {
       // 调试信息
       debug: {
         face_rect: face.face_rect,
+        has_face_rect: !!face.face_rect,
         landmark72_count: face.landmark72 ? face.landmark72.length : 0,
-        landmark72_sample: face.landmark72 ? face.landmark72.slice(0, 5) : []
+        face_keys: face ? Object.keys(face) : []
       }
     };
 
