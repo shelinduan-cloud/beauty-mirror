@@ -155,21 +155,22 @@ function calculateFaceProportions(landmark150, faceShape) {
       return null;
     };
 
-    // 眼睛
-    const leftEyeInner = getPoint('eye_left_right_corner');
-    const leftEyeOuter = getPoint('eye_left_left_corner');
-    const rightEyeInner = getPoint('eye_right_left_corner');
-    const rightEyeOuter = getPoint('eye_right_right_corner');
-    // 眉毛
-    const leftEyebrow = getPoint('eyebrow_left_center');
-    const rightEyebrow = getPoint('eyebrow_right_center');
+    // 眼睛内角（根据实际键名）
+    const leftEyeInner = getPoint('eye_left_corner_right');
+    const rightEyeInner = getPoint('eye_right_corner_left');
+    // 眼睛中心（备选）
+    const leftEyeCenter = getPoint('eye_left_eyeball_center');
+    const rightEyeCenter = getPoint('eye_right_eyeball_center');
+    // 眉毛（根据实际键名）
+    const leftEyebrow = getPoint('eyebrow_left_upper_3');
+    const rightEyebrow = getPoint('eyebrow_right_upper_3');
     // 鼻子
     const noseTip = getPoint('nose_tip');
-    // 嘴巴
-    const mouthLeft = getPoint('mouth_left_corner');
-    const mouthRight = getPoint('mouth_right_corner');
-    // 下巴
-    const chin = getPoint('chin');
+    // 嘴巴（根据实际键名）
+    const mouthLeft = getPoint('mouth_corner_left_outer');
+    const mouthRight = getPoint('mouth_corner_right_outer');
+    // 下巴（根据实际键名）
+    const chin = getPoint('chin_2');
 
     // 获取所有点的坐标用于计算边界
     let minY = Infinity, maxY = -Infinity, minX = Infinity, maxX = -Infinity;
@@ -196,9 +197,9 @@ function calculateFaceProportions(landmark150, faceShape) {
       browY = rightEyebrow.y;
     }
 
-    // 如果没有眉毛，用左眼上沿近似
-    if (browY === null && leftEyeInner) {
-      browY = leftEyeInner.y - 15;
+    // 如果没有眉毛，用眼睛中心近似
+    if (browY === null && leftEyeCenter) {
+      browY = leftEyeCenter.y - 30;
     }
 
     // 三庭计算
@@ -214,6 +215,9 @@ function calculateFaceProportions(landmark150, faceShape) {
     let eyeDist = 0;
     if (leftEyeInner && rightEyeInner) {
       eyeDist = Math.hypot(rightEyeInner.x - leftEyeInner.x, rightEyeInner.y - leftEyeInner.y);
+    } else if (leftEyeCenter && rightEyeCenter) {
+      // 备选：使用眼球中心
+      eyeDist = Math.hypot(rightEyeCenter.x - leftEyeCenter.x, rightEyeCenter.y - leftEyeCenter.y);
     }
 
     // 嘴宽
@@ -259,10 +263,10 @@ function calculateFaceProportions(landmark150, faceShape) {
 
     return {
       three_quotients: {
-        upper: 0,
-        middle: 0,
-        lower: 0,
-        ratio: '标准',
+        upper: upper,
+        middle: middle,
+        lower: lower,
+        ratio: ratioStr,
         assessment: ratioAssessment
       },
       eye_distance: eyeDist > 0 ? Math.round(eyeDist) : 0,
