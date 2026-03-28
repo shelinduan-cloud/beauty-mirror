@@ -690,9 +690,8 @@
       document.getElementById('resultView').style.display = 'block';
       document.getElementById('errorView').style.display = 'none';
       
-      // 评分80-100分
-      let rawScore = data.beauty || 0;
-      const score = 80 + Math.round(rawScore * 0.2);
+      // 评分80-100分（后端已返回80-100分）
+      const score = data.beauty || 0;
       animateValue('beautyScore', 0, score, 1500);
       
       // 评分等级（80-100分）
