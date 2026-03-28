@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>AI测脸 - 医美魔镜</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #fff5f5 0%, #ffeef0 100%);
+      min-height: 100vh;
+      color: #333;
+    }
+    .container {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 20px;
+      min-height: 100vh;
+    }
+    .header {
+      text-align: center;
+      padding: 30px 0;
+    }
+    .header h1 {
+      font-size: 28px;
+      color: #e85d75;
+      margin-bottom: 8px;
+    }
+    .header p {
+      color: #999;
+      font-size: 14px;
+    }
+    .upload-area {
+      background: #fff;
+      border-radius: 20px;
+      padding: 40px 20px;
+      text-align: center;
+      box-shadow: 0 10px 40px rgba(232, 93, 117, 0.1);
+      margin-bottom: 20px;
+    }
+    .upload-icon {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 20px;
+      background: linear-gradient(135deg, #ff758c 0%, #ff7eb3 100%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .upload-icon svg {
+      width: 36px;
+      height: 36px;
+      fill: white;
+    }
+    .upload-text {
+      color: #666;
+      margin-bottom: 20px;
+    }
+    .btn-group {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+    }
+    .btn {
+      padding: 14px 32px;
+      border-radius: 30px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.3s;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #ff758c 0%, #ff7eb3 100%);
+      color: white;
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(232, 93, 117, 0.3);
+    }
+    .btn-secondary {
+      background: #fff;
+      color: #e85d75;
+      border: 2px solid #e85d75;
+    }
+    .preview-area {
+      display: none;
+      text-align: center;
+    }
+    .preview-img {
+      max-width: 280px;
+      max-height: 280px;
+      border-radius: 16px;
+      margin-bottom: 20px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+    }
+    .analyzing {
+      display: none;
+      padding: 60px 20px;
+      text-align: center;
+    }
+    .spinner {
+      width: 60px;
+      height: 60px;
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #e85d75;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .result-area {
+      display: none;
+    }
+    .beauty-score {
+      background: linear-gradient(135deg, #ff758c 0%, #ff7eb3 100%);
+      border-radius: 24px;
+      padding: 40px 20px;
+      text-align: center;
+      color: white;
+      margin-bottom: 24px;
+    }
+    .score-label {
+      font-size: 18px;
+      opacity: 0.9;
+      margin-bottom: 10px;
+    }
+    .score-value {
+      font-size: 72px;
+      font-weight: 700;
+      line-height: 1;
+    }
+    .score-unit {
+      font-size: 24px;
+      opacity: 0.8;
+    }
+    .score-level {
+      margin-top: 16px;
+      padding: 8px 20px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 20px;
+      display: inline-block;
+      font-size: 16px;
+    }
+    .result-cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .result-card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 20px;
+      text-align: center;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+    }
+    .card-icon {
+      font-size: 28px;
+      margin-bottom: 8px;
+    }
+    .card-label {
+      color: #999;
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+    .card-value {
+      color: #333;
+      font-size: 16px;
+      font-weight: 600;
+    }
+    .retest-btn {
+      margin-top: 24px;
+      width: 100%;
+    }
+    .advice-card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 20px;
+      margin-top: 20px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+      text-align: left;
+    }
+    .advice-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .advice-icon {
+      font-size: 24px;
+      margin-right: 8px;
+    }
+    .advice-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #e85d75;
+    }
+    .advice-summary {
+      color: #666;
+      font-size: 14px;
+      line-height: 1.8;
+      margin-bottom: 16px;
+      padding: 14px;
+      background: #fafafa;
+      border-radius: 10px;
+      border-left: 3px solid #e85d75;
+    }
+    .advice-list {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .advice-item {
+      display: flex;
+      align-items: flex-start;
+    }
+    .advice-item-title {
+      font-weight: 600;
+      color: #333;
+      font-size: 14px;
+      min-width: 80px;
+      flex-shrink: 0;
+    }
+    .advice-item-content {
+      color: #666;
+      font-size: 14px;
+      line-height: 1.6;
+      flex: 1;
+    }
+    .tips {
+      text-align: center;
+      color: #999;
+      font-size: 12px;
+      margin-top: 20px;
+      padding: 16px;
+      background: rgba(232, 93, 117, 0.05);
+      border-radius: 12px;
+    }
+    .privacy-hint {
+      color: #999;
+      font-size: 11px;
+      margin-top: 16px;
+      text-align: center;
+      line-height: 1.6;
+    }
+    .privacy-hint a {
+      color: #e85d75;
+      text-decoration: none;
+    }
+    .privacy-hint a:hover {
+      text-decoration: underline;
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+    }
+    .modal-content {
+      background-color: #fff;
+      margin: 20px auto;
+      max-width: 500px;
+      max-height: 90vh;
+      border-radius: 20px;
+      overflow: hidden;
+      animation: modalSlide 0.3s ease;
+    }
+    @keyframes modalSlide {
+      from { transform: translateY(-50px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .modal-header {
+      background: linear-gradient(135deg, #ff758c 0%, #ff7eb3 100%);
+      color: white;
+      padding: 20px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-header h2 {
+      margin: 0;
+      font-size: 20px;
+    }
+    .modal-header .close {
+      color: white;
+      font-size: 32px;
+      font-weight: bold;
+      cursor: pointer;
+      line-height: 1;
+    }
+    .modal-header .close:hover {
+      opacity: 0.8;
+    }
+    .modal-body {
+      padding: 24px;
+      max-height: calc(90vh - 80px);
+      overflow-y: auto;
+    }
+    .privacy-intro {
+      color: #e85d75;
+      font-size: 15px;
+      font-weight: 600;
+      text-align: center;
+      margin-bottom: 20px;
+      padding: 12px;
+      background: linear-gradient(135deg, #fff5f7 0%, #ffeef0 100%);
+      border-radius: 10px;
+    }
+    .privacy-section {
+      margin-bottom: 24px;
+    }
+    .privacy-section h3 {
+      color: #333;
+      font-size: 16px;
+      margin-bottom: 14px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #ffeef0;
+    }
+    .privacy-item {
+      display: flex;
+      align-items: flex-start;
+      margin-bottom: 14px;
+      padding: 12px;
+      background: #fafafa;
+      border-radius: 10px;
+      line-height: 1.6;
+      font-size: 13px;
+      color: #666;
+    }
+    .privacy-item .check {
+      margin-right: 10px;
+      font-size: 16px;
+    }
+    .privacy-item .num {
+      background: linear-gradient(135deg, #ff758c 0%, #ff7eb3 100%);
+      color: white;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: bold;
+      margin-right: 10px;
+      flex-shrink: 0;
+    }
+    .tech-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+    }
+    .tech-item {
+      text-align: center;
+      padding: 14px 8px;
+      background: linear-gradient(135deg, #fff5f7 0%, #ffeef0 100%);
+      border-radius: 12px;
+    }
+    .tech-icon {
+      font-size: 24px;
+      margin-bottom: 6px;
+    }
+    .tech-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 4px;
+    }
+    .tech-desc {
+      font-size: 10px;
+      color: #888;
+      line-height: 1.4;
+    }
+    .clear-tip {
+      color: #666;
+      font-size: 13px;
+      margin-bottom: 12px;
+    }
+    .btn-clear {
+      width: 100%;
+      padding: 14px;
+      background: #fff;
+      border: 2px solid #e85d75;
+      color: #e85d75;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .btn-clear:hover {
+      background: #e85d75;
+      color: white;
+    }
+    .clear-note {
+      color: #999;
+      font-size: 11px;
+      margin-top: 10px;
+      text-align: center;
+    }
+    .privacy-footer {
+      text-align: center;
+      color: #999;
+      font-size: 12px;
+      padding-top: 16px;
+      border-top: 1px solid #eee;
+      margin-top: 20px;
+    }
+    input[type="file"] {
+      display: none;
+    }
+    .error-msg {
+      background: #fee;
+      color: #e85d75;
+      padding: 16px;
+      border-radius: 12px;
+      text-align: center;
+      margin-bottom: 20px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>AI 魔镜测脸</h1>
+      <p>上传照片，AI智能分析你的颜值</p>
+    </div>
+
+    <div id="uploadView" class="upload-area">
+      <div class="upload-icon" onclick="document.getElementById('fileInput').click()">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+      </div>
+      <p class="upload-text">点击上传照片或拍照</p>
+      <div class="btn-group">
+        <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">选择照片</button>
+        <button class="btn btn-secondary" onclick="takePhoto()">拍照</button>
+      </div>
+      <div class="tips">
+        建议上传正面、无遮挡、光线充足的照片<br>支持 JPG、PNG 格式
+      </div>
+      <p class="privacy-hint">
+        您的照片仅用于分析，不会被保存或分享
+        <a href="javascript:void(0)" onclick="showPrivacy()">查看隐私政策</a>
+      </p>
+    </div>
+
+    <div id="previewView" class="preview-area">
+      <img id="previewImg" class="preview-img" src="" alt="预览">
+      <div class="btn-group">
+        <button class="btn btn-secondary" onclick="showUpload()">重新选择</button>
+        <button class="btn btn-primary" onclick="analyzeFace()">开始分析</button>
+      </div>
+    </div>
+
+    <div id="analyzingView" class="analyzing">
+      <div class="spinner"></div>
+      <p>AI 正在分析你的脸...</p>
+    </div>
+
+    <div id="errorView" class="error-msg"></div>
+
+    <div id="resultView" class="result-area">
+      <div class="beauty-score">
+        <div class="score-label">你的颜值分数</div>
+        <div class="score-value"><span id="beautyScore">0</span><span class="score-unit">分</span></div>
+        <div class="score-level" id="scoreLevel">美女一枚</div>
+      </div>
+      
+      <div class="result-cards">
+        <div class="result-card">
+          <div class="card-icon">🎂</div>
+          <div class="card-label">年龄</div>
+          <div class="card-value" id="ageValue">-</div>
+        </div>
+        <div class="result-card">
+          <div class="card-icon">👤</div>
+          <div class="card-label">性别</div>
+          <div class="card-value" id="genderValue">-</div>
+        </div>
+        <div class="result-card">
+          <div class="card-icon">✨</div>
+          <div class="card-label">脸型</div>
+          <div class="card-value" id="faceShapeValue">-</div>
+        </div>
+        <div class="result-card">
+          <div class="card-icon">😊</div>
+          <div class="card-label">表情</div>
+          <div class="card-value" id="expressionValue">-</div>
+        </div>
+        <div class="result-card">
+          <div class="card-icon">💭</div>
+          <div class="card-label">情绪</div>
+          <div class="card-value" id="emotionValue">-</div>
+        </div>
+        <div class="result-card">
+          <div class="card-icon">👨</div>
+          <div class="card-label">男生评分</div>
+          <div class="card-value" id="beautyMaleValue">-</div>
+        </div>
+      </div>
+
+      <div id="adviceCard" class="advice-card" style="display:none;">
+        <div class="advice-header">
+          <span class="advice-icon">💡</span>
+          <span class="advice-title">医美建议</span>
+        </div>
+        <div class="advice-summary" id="adviceSummary"></div>
+        <div class="advice-list" id="adviceList"></div>
+      </div>
+
+      <button class="btn btn-primary retest-btn" onclick="showUpload()">再次测脸</button>
+    </div>
+  </div>
+
+  <input type="file" id="fileInput" accept="image/*" onchange="handleFileSelect(event)">
+  <video id="video" style="display:none" autoplay></video>
+  <canvas id="canvas" style="display:none"></canvas>
+
+  <script>
+    let currentImageBase64 = null;
+
+    function handleFileSelect(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      processImage(file);
+    }
+
+    function takePhoto() {
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
+        .then(stream => {
+          const video = document.getElementById('video');
+          video.style.display = 'block';
+          video.srcObject = stream;
+          
+          video.onloadedmetadata = () => {
+            const canvas = document.getElementById('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+            processImage(dataURLToBlob(dataUrl));
+            
+            stream.getTracks().forEach(track => track.stop());
+            video.style.display = 'none';
+          };
+        })
+        .catch(err => {
+          showError('无法访问摄像头，请确保授予权限');
+        });
+    }
+
+    function dataURLToBlob(dataURL) {
+      const arr = dataURL.split(',');
+      const mime = arr[0].match(/:(.*?);/)[1];
+      const bstr = atob(arr[1]);
+      let n = bstr.length;
+      const u8arr = new Uint8Array(n);
+      while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+      }
+      return new Blob([u8arr], { type: mime });
+    }
+
+    function processImage(file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.getElementById('canvas');
+          const ctx = canvas.getContext('2d');
+          
+          let width = img.width;
+          let height = img.height;
+          const maxSize = 800;
+          
+          if (width > maxSize || height > maxSize) {
+            if (width > height) {
+              height = (height / width) * maxSize;
+              width = maxSize;
+            } else {
+              width = (width / height) * maxSize;
+              height = maxSize;
+            }
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          currentImageBase64 = canvas.toDataURL('image/jpeg', 0.85).split(',')[1];
+          
+          document.getElementById('previewImg').src = canvas.toDataURL('image/jpeg', 0.85);
+          showPreview();
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function showUpload() {
+      document.getElementById('uploadView').style.display = 'block';
+      document.getElementById('previewView').style.display = 'none';
+      document.getElementById('analyzingView').style.display = 'none';
+      document.getElementById('resultView').style.display = 'none';
+      document.getElementById('errorView').style.display = 'none';
+      document.getElementById('fileInput').value = '';
+    }
+
+    function showPreview() {
+      document.getElementById('uploadView').style.display = 'none';
+      document.getElementById('previewView').style.display = 'block';
+      document.getElementById('analyzingView').style.display = 'none';
+      document.getElementById('resultView').style.display = 'none';
+      document.getElementById('errorView').style.display = 'none';
+    }
+
+    function showAnalyzing() {
+      document.getElementById('uploadView').style.display = 'none';
+      document.getElementById('previewView').style.display = 'none';
+      document.getElementById('analyzingView').style.display = 'block';
+      document.getElementById('resultView').style.display = 'none';
+      document.getElementById('errorView').style.display = 'none';
+    }
+
+    function showResult(data) {
+      document.getElementById('uploadView').style.display = 'none';
+      document.getElementById('previewView').style.display = 'none';
+      document.getElementById('analyzingView').style.display = 'none';
+      document.getElementById('resultView').style.display = 'block';
+      document.getElementById('errorView').style.display = 'none';
+      
+      let rawScore = data.beauty || data.beauty_male || 0;
+      const score = Math.min(100, Math.round(rawScore * 1.5));
+      animateValue('beautyScore', 0, score, 1500);
+      
+      let level = '甜美可人';
+      if (score >= 95) level = '绝色天香';
+      else if (score >= 90) level = '惊为天人';
+      else if (score >= 85) level = '倾国倾城';
+      else if (score >= 80) level = '国色天香';
+      else if (score >= 75) level = '闭月羞花';
+      else if (score >= 70) level = '沉鱼落雁';
+      else if (score >= 65) level = '貌美如花';
+      else if (score >= 60) level = '清秀脱俗';
+      else if (score >= 55) level = '小家碧玉';
+      else if (score >= 50) level = '清新可人';
+      else if (score >= 45) level = '温婉动人';
+      else level = '潜力无限';
+      document.getElementById('scoreLevel').textContent = level;
+      
+      document.getElementById('ageValue').textContent = data.age ? Math.round(data.age) + '岁' : '-';
+      document.getElementById('genderValue').textContent = data.gender === 'male' ? '男生' : '女生';
+      
+      const faceShapeMap = {
+        'square': '国字脸',
+        'triangle': '三角脸',
+        'oval': '鹅蛋脸',
+        'heart': '心形脸',
+        'round': '圆脸'
+      };
+      document.getElementById('faceShapeValue').textContent = faceShapeMap[data.face_shape] || '-';
+      
+      const expressionMap = {
+        'none': '严肃',
+        'smile': '微笑',
+        'laugh': '大笑'
+      };
+      document.getElementById('expressionValue').textContent = expressionMap[data.expression] || '-';
+      
+      const emotionMap = {
+        'angry': '生气',
+        'disgust': '厌恶',
+        'fear': '害怕',
+        'happy': '开心',
+        'sad': '难过',
+        'surprise': '惊讶',
+        'neutral': '平静'
+      };
+      document.getElementById('emotionValue').textContent = emotionMap[data.emotion] || '-';
+      
+      document.getElementById('beautyMaleValue').textContent = data.beauty_male ? Math.round(data.beauty_male) + '分' : '-';
+      
+      // 显示医美建议
+      if (data.advice) {
+        document.getElementById('adviceCard').style.display = 'block';
+        document.getElementById('adviceSummary').textContent = data.advice.summary;
+        
+        const listHtml = data.advice.suggestions.map(item => `
+          <div class="advice-item">
+            <span class="advice-item-title">${item.title}</span>
+            <span class="advice-item-content">${item.content}</span>
+          </div>
+        `).join('');
+        document.getElementById('adviceList').innerHTML = listHtml;
+      } else {
+        document.getElementById('adviceCard').style.display = 'none';
+      }
+    }
+
+    function animateValue(id, start, end, duration) {
+      const obj = document.getElementById(id);
+      let startTimestamp = null;
+      const step = (timestamp) => {
+        if (!startTimestamp) startTimestamp = timestamp;
+        const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+        obj.innerHTML = Math.floor(progress * (end - start) + start);
+        if (progress < 1) {
+          window.requestAnimationFrame(step);
+        }
+      };
+      window.requestAnimationFrame(step);
+    }
+
+    function showError(msg) {
+      document.getElementById('errorView').textContent = msg;
+      document.getElementById('errorView').style.display = 'block';
+      document.getElementById('uploadView').style.display = 'none';
+      document.getElementById('previewView').style.display = 'none';
+      document.getElementById('analyzingView').style.display = 'none';
+      document.getElementById('resultView').style.display = 'none';
+    }
+
+    async function analyzeFace() {
+      if (!currentImageBase64) {
+        showError('请先选择照片');
+        return;
+      }
+      
+      showAnalyzing();
+      
+      try {
+        const response = await fetch('/api/detect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: currentImageBase64 })
+        });
+        
+        const data = await response.json();
+        
+        if (data.error) {
+          showError(data.error);
+          return;
+        }
+        
+        if (data.beauty === undefined || data.beauty === null) {
+          showError('未检测到人脸，请上传正脸照片');
+          return;
+        }
+        
+        showResult(data);
+      } catch (err) {
+        showError('网络错误，请检查网络后重试');
+      }
+    }
+
+    function showPrivacy() {
+      document.getElementById('privacyModal').style.display = 'block';
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closePrivacy() {
+      document.getElementById('privacyModal').style.display = 'none';
+      document.body.style.overflow = 'auto';
+    }
+
+    function clearLocalData() {
+      if (confirm('确定要清除所有本地数据吗？')) {
+        try {
+          localStorage.clear();
+          sessionStorage.clear();
+          alert('本地数据已清除');
+        } catch (e) {
+          alert('清除失败: ' + e.message);
+        }
+      }
+    }
+
+    window.onclick = function(event) {
+      if (event.target == document.getElementById('privacyModal')) {
+        closePrivacy();
+      }
+    }
+  </script>
+
+  <div id="privacyModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>🌸 隐私政策</h2>
+        <span class="close" onclick="closePrivacy()">&times;</span>
+      </div>
+      <div class="modal-body">
+        <p class="privacy-intro">我们重视您的隐私，承诺保护您的个人信息</p>
+        
+        <div class="privacy-section">
+          <h3>📋 核心隐私承诺</h3>
+          <div class="privacy-item">
+            <span class="check">✅</span>
+            <span><strong>本地处理，不上传服务器</strong> — 所有照片分析均在您的浏览器本地完成，图片数据不会上传到任何服务器</span>
+          </div>
+          <div class="privacy-item">
+            <span class="check">✅</span>
+            <span><strong>即时分析，不存储照片</strong> — 分析完成后，照片数据仅保存在您的浏览器内存中，关闭页面即自动清除</span>
+          </div>
+          <div class="privacy-item">
+            <span class="check">✅</span>
+            <span><strong>端侧AI计算</strong> — 采用前端AI算法，所有计算在您的设备上完成，确保数据安全</span>
+          </div>
+        </div>
+
+        <div class="privacy-section">
+          <h3>📖 数据处理说明</h3>
+          <div class="privacy-item">
+            <span class="num">1</span>
+            <span><strong>我们收集什么信息？</strong><br>我们仅在您主动上传照片时，临时读取照片数据用于面部分析。不收集任何个人身份信息、联系方式或其他敏感数据。</span>
+          </div>
+          <div class="privacy-item">
+            <span class="num">2</span>
+            <span><strong>信息如何使用？</strong><br>上传的照片仅用于即时的面部美学分析，生成个性化的美容建议。分析过程完全在您的浏览器本地进行，不涉及任何网络传输。</span>
+          </div>
+          <div class="privacy-item">
+            <span class="num">3</span>
+            <span><strong>信息如何存储？</strong><br>照片数据仅临时存储在浏览器内存中，用于显示分析结果。当您关闭页面或点击"重新分析"时，数据会自动清除。我们不会将任何数据保存到服务器。</span>
+          </div>
+          <div class="privacy-item">
+            <span class="num">4</span>
+            <span><strong>信息是否共享？</strong><br>绝不共享。由于所有处理都在本地完成，您的照片和分析结果不会被传输到任何第三方，也不会被我们的服务器接收。</span>
+          </div>
+        </div>
+
+        <div class="privacy-section">
+          <h3>🔒 技术架构保障</h3>
+          <div class="tech-grid">
+            <div class="tech-item">
+              <div class="tech-icon">🤖</div>
+              <div class="tech-title">前端AI技术</div>
+              <div class="tech-desc">采用先进的前端AI算法，所有面部识别和分析均在您的设备上完成</div>
+            </div>
+            <div class="tech-item">
+              <div class="tech-icon">🌐</div>
+              <div class="tech-title">零服务器交互</div>
+              <div class="tech-desc">整个分析过程不需要与服务器通信，确保您的隐私绝对安全</div>
+            </div>
+            <div class="tech-item">
+              <div class="tech-icon">💾</div>
+              <div class="tech-title">浏览器本地存储</div>
+              <div class="tech-desc">仅使用浏览器的临时内存，不写入任何持久化存储</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="privacy-section">
+          <h3>🗑️ 数据清除</h3>
+          <p class="clear-tip">如果您希望清除所有本地数据（包括浏览器缓存和临时文件），可以点击下方按钮。</p>
+          <button class="btn-clear" onclick="clearLocalData()">清除所有本地数据</button>
+          <p class="clear-note">注意：此操作将清除所有本地存储数据，但不会影响您的分析历史（因为我们不存储历史记录）</p>
+        </div>
+
+        <div class="privacy-footer">
+          <p>最后更新日期：2025年12月1日</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

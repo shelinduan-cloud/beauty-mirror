@@ -1,0 +1,8 @@
+{
+  "name": "beauty-mirror",
+  "version": "1.0.0",
+  "description": "AI医美魔镜测脸 - EdgeOne Pages",
+  "scripts": {
+    "start": "echo 'Use EdgeOne Pages to deploy'"
+  }
+}
